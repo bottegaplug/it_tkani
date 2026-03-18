@@ -132,9 +132,15 @@ export default function PostModal({ post, onClose, onBuy }: PostModalProps) {
               })}
             </p>
 
-            <h2 className="font-heading text-2xl font-semibold text-[#2c2825] mb-4">
+            <h2 className="font-heading text-2xl font-semibold text-[#2c2825] mb-2">
               {post.title}
             </h2>
+
+            {post.price && (
+              <p className="text-lg font-heading font-semibold text-[#2c2825] mb-4">
+                {post.price}
+              </p>
+            )}
 
             <div className="text-sm text-[#2c2825]/80 leading-relaxed whitespace-pre-wrap mb-6">
               {post.description}

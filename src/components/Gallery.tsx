@@ -57,8 +57,16 @@ export default function Gallery({ posts, onPostClick }: GalleryProps) {
             </div>
           )}
 
+          {/* Title + price overlay at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3 pt-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <p className="text-white text-sm font-medium truncate">{post.title}</p>
+            {post.price && (
+              <p className="text-white/80 text-xs mt-0.5">{post.price}</p>
+            )}
+          </div>
+
           {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
         </div>
       ))}
     </div>
