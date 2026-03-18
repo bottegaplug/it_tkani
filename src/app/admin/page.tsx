@@ -399,7 +399,7 @@ export default function AdminPage() {
                   {uploading ? "Загрузка..." : "Загрузить видео"}
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,.avi"
                     multiple
                     onChange={handleVideoUpload}
                     disabled={uploading}

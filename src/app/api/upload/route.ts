@@ -3,6 +3,15 @@ import { isConfigured } from "@/lib/supabase";
 import fs from "fs";
 import path from "path";
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+// Allow uploads up to 50MB
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   if (req.cookies.get("admin_auth")?.value !== "authenticated") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
