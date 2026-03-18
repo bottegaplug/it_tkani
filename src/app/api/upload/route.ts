@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
   let formData: FormData;
   try {
     formData = await req.formData();
-  } catch {
+  } catch (err) {
+    console.error("FormData parse error:", err);
     return NextResponse.json({ error: "Failed to parse form data" }, { status: 400 });
   }
 
@@ -28,21 +29,42 @@ export async function POST(req: NextRequest) {
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   // Determine bucket: videos go to 'media', images to 'images'
-  const isVideo = file.type.startsWith("video/");
+  const isVideo = file.type.startsWith("video/") || ["mp4", "mov", "webm", "avi", "mkv"].includes(ext);
   const bucket = isVideo ? "media" : "images";
 
   if (isConfigured) {
     const { supabase } = await import("@/lib/supabase");
-    const arrayBuf = await file.arrayBuffer();
+
+    let arrayBuf: ArrayBuffer;
+    try {
+      arrayBuf = await file.arrayBuffer();
+    } catch (err) {
+      console.error("ArrayBuffer error:", err);
+      return NextResponse.json({ error: "Failed to read file buffer" }, { status: 500 });
+    }
+
+    // Upload as Buffer (more compatible than ArrayBuffer)
+    const buffer = Buffer.from(arrayBuf);
+
     const { error } = await supabase.storage
       .from(bucket)
-      .upload(fileName, arrayBuf, { contentType: file.type });
+      .upload(fileName, buffer, {
+        contentType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
+        upsert: false,
+      });
+
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error(`Supabase upload error (bucket: ${bucket}):`, error);
+      return NextResponse.json(
+        { error: `Upload failed: ${error.message}` },
+        { status: 500 }
+      );
     }
+
     const { data: urlData } = supabase.storage
       .from(bucket)
       .getPublicUrl(fileName);
+
     return NextResponse.json({ url: urlData.publicUrl });
   }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Post } from "@/types";
+import { uploadFile } from "@/lib/upload-client";
 
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
@@ -21,6 +22,7 @@ export default function AdminPage() {
   const [isNew, setIsNew] = useState(false);
   const [price, setPrice] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const checkAuth = useCallback(async () => {
@@ -94,57 +96,38 @@ export default function AdminPage() {
     setShowForm(true);
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
+  const uploadFiles = async (files: FileList, type: "image" | "video") => {
     setUploading(true);
+    setUploadError("");
     const newUrls: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
-      const formData = new FormData();
-      formData.append("file", files[i]);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        const { url } = await res.json();
+      try {
+        const url = await uploadFile(files[i]);
         newUrls.push(url);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Неизвестная ошибка";
+        setUploadError(`Ошибка загрузки ${files[i].name}: ${msg}`);
       }
     }
 
-    setImages((prev) => [...prev, ...newUrls]);
+    if (type === "image") {
+      setImages((prev) => [...prev, ...newUrls]);
+    } else {
+      setVideos((prev) => [...prev, ...newUrls]);
+    }
     setUploading(false);
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    await uploadFiles(e.target.files, "image");
     e.target.value = "";
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    setUploading(true);
-    const newUrls: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const formData = new FormData();
-      formData.append("file", files[i]);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        const { url } = await res.json();
-        newUrls.push(url);
-      }
-    }
-
-    setVideos((prev) => [...prev, ...newUrls]);
-    setUploading(false);
+    if (!e.target.files) return;
+    await uploadFiles(e.target.files, "video");
     e.target.value = "";
   };
 
@@ -329,6 +312,12 @@ export default function AdminPage() {
                   className="w-full py-2.5 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
                 />
               </div>
+
+              {uploadError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm">
+                  {uploadError}
+                </div>
+              )}
 
               {/* Photos */}
               <div>
