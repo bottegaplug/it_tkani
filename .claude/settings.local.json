@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:catalog.andreana.ru)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs:/c/Users/ynsou/AppData/Roaming/npm\")",
+      "Bash(npm --version)",
+      "Bash(cmd.exe /c \"where node\")",
+      "Bash(cmd.exe /c \"node --version\")",
+      "Bash(powershell.exe -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell.exe -Command \"& { node --version }\")",
+      "Bash(powershell.exe -Command \"winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements\")",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(mkdir -p \"/c/Users/ynsou/Desktop/IT TKANI Website/it-tkani\")",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/admin)",
+      "Bash(powershell.exe -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_OwningProcess -Force }\")",
+      "Bash(mv it-tkani/next-env.d.ts it-tkani/next.config.ts it-tkani/package-lock.json it-tkani/package.json it-tkani/postcss.config.mjs it-tkani/supabase-schema.sql it-tkani/tsconfig.json it-tkani/vercel.json it-tkani/.env.local it-tkani/.gitignore .)",
+      "Bash(mv it-tkani/src .)",
+      "Bash(mv it-tkani/public .)",
+      "Bash(mv it-tkani/node_modules .)",
+      "Bash(mv it-tkani/.next .)",
+      "Bash(npx next:*)",
+      "Bash(where node:*)",
+      "Bash(where npx:*)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" node_modules/.bin/next build)",
+      "Bash(\"/c/Program Files/nodejs/npx.cmd\" next build)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" -e \"console.log\\(''works''\\)\")",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" \"./node_modules/next/dist/bin/next\" build)",
+      "Bash(tasklist)",
+      "Bash(findstr \"node\")",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" \"./node_modules/next/dist/bin/next\" dev --port 3000)"
+    ]
+  }
+}

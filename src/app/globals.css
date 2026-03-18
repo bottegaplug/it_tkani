@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "Cormorant Garamond", serif;
+  --font-body: "Inter", sans-serif;
+  --color-beige: #f5f0eb;
+  --color-beige-dark: #e8e0d8;
+  --color-warm-gray: #8a8178;
+  --color-dark: #2c2825;
+}
+
+html, body {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-dark);
+  background-color: #faf9f7;
+}
+
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-beige-dark);
+}
+
+/* Modal animation */
+.modal-overlay {
+  animation: fadeIn 0.2s ease;
+}
+.modal-content {
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
