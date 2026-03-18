@@ -50,6 +50,14 @@ export default function Home() {
         const data = await res.json();
         setAllPosts(data);
         setTags(extractTags(data));
+
+        // Open post from URL ?post=ID
+        const params = new URLSearchParams(window.location.search);
+        const postId = params.get("post");
+        if (postId) {
+          const found = data.find((p: Post) => p.id === postId);
+          if (found) setSelectedPost(found);
+        }
       }
     } catch {
       // API may not be ready
@@ -148,7 +156,10 @@ export default function Home() {
         />
 
         <main className="flex-1 min-w-0">
-          <Gallery posts={paginatedPosts} onPostClick={setSelectedPost} />
+          <Gallery posts={paginatedPosts} onPostClick={(post) => {
+            setSelectedPost(post);
+            window.history.replaceState(null, "", `/?post=${post.id}`);
+          }} />
 
           {hasMore && (
             <>
@@ -177,7 +188,10 @@ export default function Home() {
       {selectedPost && (
         <PostModal
           post={selectedPost}
-          onClose={() => setSelectedPost(null)}
+          onClose={() => {
+            setSelectedPost(null);
+            window.history.replaceState(null, "", "/");
+          }}
           onBuy={() => setShowBuyModal(true)}
         />
       )}
