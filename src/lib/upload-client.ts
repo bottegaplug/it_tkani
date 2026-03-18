@@ -48,12 +48,23 @@ export async function uploadFile(file: File): Promise<string> {
   if (supabaseUrl.startsWith("http") && supabaseAnonKey) {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Read file as ArrayBuffer for maximum compatibility (mobile Safari fix)
-    const arrayBuffer = await file.arrayBuffer();
+    // Mobile Safari needs ArrayBuffer; desktop works better with Blob
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(
+      typeof navigator !== "undefined" ? navigator.userAgent : ""
+    );
+
+    let body: ArrayBuffer | Blob;
+    if (isMobile) {
+      body = await file.arrayBuffer();
+    } else {
+      // Re-wrap as Blob with correct content type (fixes desktop upload)
+      const buf = await file.arrayBuffer();
+      body = new Blob([buf], { type: contentType });
+    }
 
     const { error } = await supabase.storage
       .from(bucket)
-      .upload(fileName, arrayBuffer, {
+      .upload(fileName, body, {
         contentType,
         upsert: false,
       });
