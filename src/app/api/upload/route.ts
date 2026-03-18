@@ -3,13 +3,7 @@ import { isConfigured } from "@/lib/supabase";
 import fs from "fs";
 import path from "path";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-// Allow uploads up to 50MB
+// Allow up to 60s for large video uploads on Vercel
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
@@ -17,26 +11,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Failed to parse form data" }, { status: 400 });
+  }
+
   const file = formData.get("file") as File;
 
-  if (!file) {
+  if (!file || file.size === 0) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop();
+  const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  // Determine bucket: videos go to 'media', images to 'images'
+  const isVideo = file.type.startsWith("video/");
+  const bucket = isVideo ? "media" : "images";
 
   if (isConfigured) {
     const { supabase } = await import("@/lib/supabase");
+    const arrayBuf = await file.arrayBuffer();
     const { error } = await supabase.storage
-      .from("images")
-      .upload(fileName, file, { contentType: file.type });
+      .from(bucket)
+      .upload(fileName, arrayBuf, { contentType: file.type });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     const { data: urlData } = supabase.storage
-      .from("images")
+      .from(bucket)
       .getPublicUrl(fileName);
     return NextResponse.json({ url: urlData.publicUrl });
   }

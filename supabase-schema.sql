@@ -25,18 +25,35 @@ create policy "Full access for authenticated" on posts
   for all using (true);
 
 -- Storage bucket for images
-insert into storage.buckets (id, name, public)
-values ('images', 'images', true)
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('images', 'images', true, 52428800)
+on conflict do nothing;
+
+-- Storage bucket for media (videos + images)
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('media', 'media', true, 52428800)
 on conflict do nothing;
 
 -- Allow public read access to images
 create policy "Public image access" on storage.objects
   for select using (bucket_id = 'images');
 
--- Allow uploads (protected by API auth cookie)
+-- Allow uploads to images
 create policy "Allow uploads" on storage.objects
   for insert with check (bucket_id = 'images');
 
--- Allow deletes
+-- Allow deletes from images
 create policy "Allow deletes" on storage.objects
   for delete using (bucket_id = 'images');
+
+-- Allow public read access to media
+create policy "Public media access" on storage.objects
+  for select using (bucket_id = 'media');
+
+-- Allow uploads to media
+create policy "Allow media uploads" on storage.objects
+  for insert with check (bucket_id = 'media');
+
+-- Allow deletes from media
+create policy "Allow media deletes" on storage.objects
+  for delete using (bucket_id = 'media');
