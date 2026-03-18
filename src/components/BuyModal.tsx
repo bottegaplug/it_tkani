@@ -11,6 +11,7 @@ interface BuyModalProps {
 export default function BuyModal({ post, onClose }: BuyModalProps) {
   const [step, setStep] = useState<"quantity" | "contact">("quantity");
   const [quantity, setQuantity] = useState("");
+  const [vkCopied, setVkCopied] = useState(false);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -129,18 +130,44 @@ export default function BuyModal({ post, onClose }: BuyModalProps) {
               </p>
 
               <div className="flex flex-col gap-3">
-                {contacts.map((contact) => (
-                  <a
-                    key={contact.name}
-                    href={contact.getHref()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 px-5 py-4 border border-[#e8e0d8] text-[#2c2825] hover:bg-[#f5f0eb] transition-colors"
-                  >
-                    {contact.icon}
-                    <span className="font-medium">{contact.name}</span>
-                  </a>
-                ))}
+                {contacts.map((contact) =>
+                  contact.name === "VK" ? (
+                    <button
+                      key={contact.name}
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(message);
+                        setVkCopied(true);
+                        setTimeout(() => {
+                          window.open(contact.getHref(), "_blank");
+                        }, 300);
+                        setTimeout(() => setVkCopied(false), 3000);
+                      }}
+                      className="flex items-center gap-4 px-5 py-4 border border-[#e8e0d8] text-[#2c2825] hover:bg-[#f5f0eb] transition-colors text-left"
+                    >
+                      {contact.icon}
+                      <div>
+                        <span className="font-medium">VK</span>
+                        {vkCopied && (
+                          <span className="block text-xs text-[#8a8178] mt-0.5">
+                            Сообщение скопировано — вставьте в чат
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ) : (
+                    <a
+                      key={contact.name}
+                      href={contact.getHref()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-4 px-5 py-4 border border-[#e8e0d8] text-[#2c2825] hover:bg-[#f5f0eb] transition-colors"
+                    >
+                      {contact.icon}
+                      <span className="font-medium">{contact.name}</span>
+                    </a>
+                  )
+                )}
               </div>
 
               <button
