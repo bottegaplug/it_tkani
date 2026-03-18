@@ -13,7 +13,6 @@ type MediaItem = { type: "image"; url: string } | { type: "video"; url: string }
 
 export default function PostModal({ post, onClose, onBuy }: PostModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [copied, setCopied] = useState(false);
 
   const media: MediaItem[] = useMemo(() => {
     const items: MediaItem[] = [];
@@ -44,12 +43,6 @@ export default function PostModal({ post, onClose, onBuy }: PostModalProps) {
       window.removeEventListener("keydown", handleKey);
     };
   }, [onClose, prev, next]);
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/?post=${post.id}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div
@@ -122,7 +115,7 @@ export default function PostModal({ post, onClose, onBuy }: PostModalProps) {
             )}
           </div>
 
-          {/* Info panel — on mobile: no scroll, all content visible */}
+          {/* Info panel */}
           <div className="w-full lg:w-[40%] lg:overflow-y-auto p-6 lg:p-8 flex flex-col">
             <p className="text-xs text-[#8a8178] mb-3">
               {new Date(post.created_at).toLocaleDateString("ru-RU", {
@@ -159,18 +152,12 @@ export default function PostModal({ post, onClose, onBuy }: PostModalProps) {
               </div>
             )}
 
-            <div className="flex gap-3 mt-4">
+            <div className="mt-auto pt-4">
               <button
                 onClick={onBuy}
-                className="flex-1 py-3 bg-[#2c2825] text-white font-heading text-base tracking-wide hover:bg-[#3d3632] transition-colors"
+                className="w-full py-3 bg-[#2c2825] text-white font-heading text-base tracking-wide hover:bg-[#3d3632] transition-colors"
               >
                 Купить
-              </button>
-              <button
-                onClick={copyLink}
-                className="px-4 py-3 border border-[#e8e0d8] text-sm text-[#8a8178] hover:bg-[#f5f0eb] transition-colors"
-              >
-                {copied ? "Скопировано!" : "Копировать ссылку"}
               </button>
             </div>
           </div>

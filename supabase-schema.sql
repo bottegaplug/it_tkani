@@ -26,12 +26,12 @@ create policy "Full access for authenticated" on posts
 
 -- Storage bucket for images
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('images', 'images', true, 0)
+values ('images', 'images', true, 524288000)
 on conflict do nothing;
 
 -- Storage bucket for media (videos + images)
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('media', 'media', true, 0)
+values ('media', 'media', true, 524288000)
 on conflict do nothing;
 
 -- Allow public read access to images

@@ -196,8 +196,8 @@ export default function Home() {
         />
       )}
 
-      {showBuyModal && (
-        <BuyModal onClose={() => setShowBuyModal(false)} />
+      {showBuyModal && selectedPost && (
+        <BuyModal post={selectedPost} onClose={() => setShowBuyModal(false)} />
       )}
     </div>
   );
