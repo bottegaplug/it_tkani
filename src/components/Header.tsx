@@ -36,13 +36,51 @@ export default function Header({
               </svg>
             </button>
 
-            <div>
-              <h1 className="font-heading text-3xl lg:text-4xl font-semibold text-[#2c2825] tracking-wide">
-                IT Tkani
-              </h1>
-              <p className="text-xs text-[#8a8178] tracking-[0.2em] uppercase mt-0.5">
-                Ткани из Италии
-              </p>
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="font-heading text-3xl lg:text-4xl font-semibold text-[#2c2825] tracking-wide">
+                  IT Tkani
+                </h1>
+                <p className="text-xs text-[#8a8178] tracking-[0.2em] uppercase mt-0.5">
+                  Ткани из Италии
+                </p>
+              </div>
+              {/* Italian flag — hand-drawn style */}
+              <svg
+                width="22"
+                height="48"
+                viewBox="0 0 22 48"
+                fill="none"
+                className="ml-1 opacity-80"
+              >
+                {/* Green stripe */}
+                <path
+                  d="M4 2 C4.8 10, 3 18, 4.2 26, 3.5 34, 4.5 40, 3.8 46"
+                  stroke="#009246"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+                {/* White stripe */}
+                <path
+                  d="M11 2 C10.2 10, 12 18, 10.8 26, 11.5 34, 10.5 40, 11.2 46"
+                  stroke="#e8e0d8"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+                {/* Red stripe */}
+                <path
+                  d="M18 2 C17.2 10, 19 18, 17.8 26, 18.5 34, 17.5 40, 18.2 46"
+                  stroke="#CE2B37"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+              </svg>
             </div>
           </div>
 
