@@ -33,7 +33,8 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" \"./node_modules/next/dist/bin/next\" build)",
       "Bash(tasklist)",
       "Bash(findstr \"node\")",
-      "Bash(\"/c/Program Files/nodejs/node.exe\" \"./node_modules/next/dist/bin/next\" dev --port 3000)"
+      "Bash(\"/c/Program Files/nodejs/node.exe\" \"./node_modules/next/dist/bin/next\" dev --port 3000)",
+      "WebFetch(domain:it-tkani.vercel.app)"
     ]
   }
 }

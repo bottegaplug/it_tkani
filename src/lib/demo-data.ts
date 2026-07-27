@@ -395,6 +395,7 @@ export const demoPosts: Post[] = fabrics.map((f, i) => ({
   images: img(i),
   videos: [],
   tags: f.tags,
+  categories: [],
   is_new: f.isNew,
   price: f.price,
   created_at: new Date(Date.now() - 86400000 * (i * 2)).toISOString(),

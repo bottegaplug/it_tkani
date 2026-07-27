@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { CartProvider } from "@/context/CartContext";
+import { ChatProvider } from "@/context/ChatContext";
+import StockNotification from "@/components/StockNotification";
+import ChatWidget from "@/components/ChatWidget";
+import CookieBanner from "@/components/CookieBanner";
 
 export const metadata: Metadata = {
   title: "IT Tkani — Итальянские ткани премиум класса",
@@ -39,7 +45,18 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <LanguageProvider>
+          <CartProvider>
+            <ChatProvider>
+              {children}
+              <StockNotification />
+              <ChatWidget />
+              <CookieBanner />
+            </ChatProvider>
+          </CartProvider>
+        </LanguageProvider>
+      </body>
     </html>
   );
 }

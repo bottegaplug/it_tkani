@@ -38,9 +38,13 @@ export function createPost(input: Omit<Post, "id" | "created_at">): Post {
     images: input.images || [],
     videos: input.videos || [],
     tags: input.tags || [],
+    categories: input.categories || [],
     is_new: input.is_new || false,
     price: input.price || "",
     created_at: new Date().toISOString(),
+    translations: input.translations || {},
+    sku: input.sku || undefined,
+    stock_meters: input.stock_meters != null ? input.stock_meters : null,
   };
   posts.unshift(newPost);
   writePosts(posts);
@@ -59,8 +63,12 @@ export function updatePost(id: string, input: Partial<Post>): Post | null {
     images: input.images ?? posts[idx].images,
     videos: input.videos ?? posts[idx].videos,
     tags: input.tags ?? posts[idx].tags,
+    categories: input.categories ?? posts[idx].categories ?? [],
     is_new: input.is_new ?? posts[idx].is_new,
     price: input.price ?? posts[idx].price,
+    translations: input.translations ?? posts[idx].translations ?? {},
+    sku: input.sku !== undefined ? input.sku : posts[idx].sku,
+    stock_meters: input.stock_meters !== undefined ? input.stock_meters : posts[idx].stock_meters,
   };
   writePosts(posts);
   return posts[idx];

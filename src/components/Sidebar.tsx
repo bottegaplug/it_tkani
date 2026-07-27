@@ -1,25 +1,32 @@
 "use client";
 
-import type { Tag } from "@/types";
+import { useLang } from "@/context/LanguageContext";
+import { FABRIC_CATEGORIES, CATEGORY_LABELS, NOVELTIES_KEY, type FabricCategory } from "@/lib/categories";
 
 interface SidebarProps {
-  tags: Tag[];
-  selectedTags: string[];
-  onToggleTag: (tag: string) => void;
+  selectedCategories: string[];
+  categoryCounts: Record<string, number>;
+  onToggleCategory: (cat: string) => void;
   onReset: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function Sidebar({
-  tags,
-  selectedTags,
-  onToggleTag,
+  selectedCategories,
+  categoryCounts,
+  onToggleCategory,
   onReset,
   isOpen,
   onClose,
 }: SidebarProps) {
-  const totalTags = tags.length;
+  const { lang, t } = useLang();
+
+  function getCategoryLabel(cat: FabricCategory): string {
+    if (lang === "en") return CATEGORY_LABELS[cat].en;
+    if (lang === "cs") return CATEGORY_LABELS[cat].cs;
+    return cat;
+  }
 
   return (
     <>
@@ -33,20 +40,20 @@ export default function Sidebar({
 
       <aside
         className={`
-          fixed lg:sticky top-0 lg:top-[140px] left-0 h-full lg:h-[calc(100vh-160px)]
-          w-[300px] lg:w-[280px] bg-white lg:bg-transparent
-          z-50 lg:z-0 overflow-y-auto
+          fixed lg:sticky top-0 lg:top-[140px] left-0 h-full
+          w-[300px] lg:w-[260px] bg-white lg:bg-transparent
+          z-50 lg:z-0 overflow-y-auto lg:overflow-visible
           transition-transform duration-300
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           hidden lg:block lg:shrink-0
           ${isOpen ? "!block" : ""}
         `}
       >
-        <div className="p-5 lg:p-0">
+        <div className="p-5 lg:p-0 pb-16">
           {/* Mobile close button */}
           <div className="flex items-center justify-between lg:hidden mb-4">
             <h3 className="font-heading text-xl font-semibold text-[#2c2825]">
-              Фильтры
+              {t.filters}
             </h3>
             <button onClick={onClose} className="p-1 text-[#8a8178] hover:text-[#2c2825]">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -55,54 +62,48 @@ export default function Sidebar({
             </button>
           </div>
 
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-heading text-lg font-semibold text-[#2c2825]">
-              Хештеги
-              <span className="ml-2 text-sm font-body text-[#8a8178] font-normal">
-                {totalTags}
-              </span>
-            </h3>
-            {selectedTags.length > 0 && (
+          {/* Reset button (only when something selected) */}
+          {selectedCategories.length > 0 && (
+            <div className="flex justify-end mb-3">
               <button
                 onClick={onReset}
                 className="text-xs text-[#8a8178] hover:text-[#2c2825] underline underline-offset-2 transition-colors"
               >
-                Сбросить
+                {t.reset}
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div className="flex flex-col gap-1">
-            {tags.map((tag) => {
-              const isActive = selectedTags.includes(tag.name);
+          {/* Categories list */}
+          <div className="flex flex-col gap-0.5">
+            {FABRIC_CATEGORIES.map((cat) => {
+              const isActive = selectedCategories.includes(cat);
+              const count = categoryCounts[cat === NOVELTIES_KEY ? NOVELTIES_KEY : cat] ?? 0;
+
               return (
                 <button
-                  key={tag.name}
-                  onClick={() => onToggleTag(tag.name)}
-                  className={`flex items-center justify-between px-3 py-2 text-sm transition-all text-left ${
+                  key={cat}
+                  onClick={() => onToggleCategory(cat)}
+                  className={`flex items-center justify-between px-3 transition-all text-left ${
+                    cat === NOVELTIES_KEY
+                      ? "py-3 text-[16px] font-semibold"
+                      : "py-2.5 text-[15px] font-normal"
+                  } ${
                     isActive
                       ? "bg-[#2c2825] text-white"
                       : "text-[#2c2825] hover:bg-[#f5f0eb] hover:translate-x-1"
                   }`}
                 >
-                  <span>#{tag.name}</span>
-                  <span
-                    className={`text-xs ${
-                      isActive ? "text-white/70" : "text-[#8a8178]"
-                    }`}
-                  >
-                    {tag.count}
-                  </span>
+                  <span>{getCategoryLabel(cat as FabricCategory)}</span>
+                  {count > 0 && (
+                    <span className={`text-xs tabular-nums ${isActive ? "text-white/70" : "text-[#8a8178]"}`}>
+                      {count}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
-
-          {tags.length === 0 && (
-            <p className="text-sm text-[#8a8178] mt-4">
-              Хештеги появятся после добавления записей
-            </p>
-          )}
         </div>
       </aside>
     </>

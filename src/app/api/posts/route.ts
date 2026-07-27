@@ -11,21 +11,34 @@ function isAuthed(req: NextRequest) {
   return req.cookies.get("admin_auth")?.value === "authenticated";
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Admin-only full list: requires both ?admin=1 param AND valid auth cookie
+  const url = new URL(req.url);
+  const isAdminRequest = url.searchParams.get("admin") === "1" && isAuthed(req);
+
   if (isConfigured) {
     const { supabase } = await import("@/lib/supabase");
-    const { data, error } = await supabase
+    let query = supabase
       .from("posts")
       .select("*")
       .order("created_at", { ascending: false });
+
+    // Public catalog: always hide sold-out items (stock_meters = 0)
+    if (!isAdminRequest) {
+      query = query.or("stock_meters.is.null,stock_meters.gt.0");
+    }
+
+    const { data, error } = await query;
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json(data);
   }
 
-  // Local mode
-  const posts = readPosts();
+  let posts = readPosts();
+  if (!isAdminRequest) {
+    posts = posts.filter((p) => p.stock_meters == null || p.stock_meters > 0);
+  }
   return NextResponse.json(posts);
 }
 
@@ -45,9 +58,13 @@ export async function POST(req: NextRequest) {
         description: body.description,
         images: body.images || [],
         tags: body.tags || [],
+        categories: body.categories || [],
         is_new: body.is_new || false,
         price: body.price || "",
         videos: body.videos || [],
+        translations: body.translations || {},
+        sku: body.sku || null,
+        stock_meters: body.stock_meters != null ? body.stock_meters : null,
       })
       .select()
       .single();
@@ -57,15 +74,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data);
   }
 
-  // Local mode
   const post = createPost({
     title: body.title,
     description: body.description || "",
     images: body.images || [],
     tags: body.tags || [],
+    categories: body.categories || [],
     is_new: body.is_new || false,
     price: body.price || "",
     videos: body.videos || [],
+    sku: body.sku || null,
+    stock_meters: body.stock_meters != null ? body.stock_meters : null,
   });
   return NextResponse.json(post);
 }
@@ -86,9 +105,13 @@ export async function PUT(req: NextRequest) {
         description: body.description,
         images: body.images || [],
         tags: body.tags || [],
+        categories: body.categories || [],
         is_new: body.is_new || false,
         price: body.price || "",
         videos: body.videos || [],
+        translations: body.translations || {},
+        sku: body.sku || null,
+        stock_meters: body.stock_meters != null ? body.stock_meters : null,
       })
       .eq("id", body.id)
       .select()
@@ -99,15 +122,17 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json(data);
   }
 
-  // Local mode
   const updated = updatePost(body.id, {
     title: body.title,
     description: body.description,
     images: body.images || [],
     tags: body.tags || [],
+    categories: body.categories || [],
     is_new: body.is_new ?? false,
     price: body.price || "",
     videos: body.videos || [],
+    sku: body.sku || null,
+    stock_meters: body.stock_meters != null ? body.stock_meters : null,
   });
   if (!updated) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -131,7 +156,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  // Local mode
   const deleted = deletePost(id);
   if (!deleted) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
