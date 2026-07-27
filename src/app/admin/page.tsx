@@ -1337,10 +1337,10 @@ $$ LANGUAGE sql;`}</pre>
                 <input
                   type="number"
                   min="0"
-                  step="0.1"
+                  step="any"
                   value={stockMeters}
                   onChange={(e) => setStockMeters(e.target.value)}
-                  placeholder="Например: 15.5"
+                  placeholder="Например: 3.35"
                   className="w-full py-2.5 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
                 />
               </div>
