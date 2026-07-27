@@ -11,7 +11,11 @@ interface AddToCartModalProps {
   onClose: () => void;
 }
 
-const QTY_REGEX = /^\d*\.?\d{0,1}$/;
+// Up to 2 decimals, dot or comma as separator (e.g. "3.35", "3,35")
+const QTY_REGEX = /^\d*[.,]?\d{0,2}$/;
+
+/** parseFloat that also accepts a comma decimal separator */
+const parseQty = (v: string) => parseFloat(v.replace(",", "."));
 
 export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalProps) {
   const { lang, t } = useLang();
@@ -41,7 +45,7 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const num = parseFloat(qty);
+    const num = parseQty(qty);
     if (!qty || isNaN(num) || num <= 0) {
       setError(t.enterPositiveNumber);
       return;
@@ -111,12 +115,12 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
               inputMode="decimal"
               value={qty}
               onChange={(e) => handleChange(e.target.value)}
-              placeholder="1.5"
+              placeholder="3.35"
               autoFocus
               className="w-full py-3 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178] mb-1"
             />
-            {lang === "en" && qty && !isNaN(parseFloat(qty)) && parseFloat(qty) > 0 && (
-              <p className="text-xs text-[#8a8178] mb-1">{metersToFtHint(parseFloat(qty))}</p>
+            {lang === "en" && qty && !isNaN(parseQty(qty)) && parseQty(qty) > 0 && (
+              <p className="text-xs text-[#8a8178] mb-1">{metersToFtHint(parseQty(qty))}</p>
             )}
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
             {!error && <div className="mb-3" />}
