@@ -58,6 +58,15 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
         </div>
       )}
 
+      {/* Discount ribbon — full-width band sitting a little below the top edge */}
+      {post.is_discounted && (
+        <div className="absolute inset-x-0 top-[14%] bg-[#CE2B37] text-white text-center py-1.5 shadow-md pointer-events-none">
+          <span className="text-[11px] tracking-[0.22em] uppercase font-semibold">
+            {lang === "ru" ? "Скидка" : lang === "cs" ? "Sleva" : "Sale"}
+          </span>
+        </div>
+      )}
+
       {/* Title + price overlay on hover */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
         <p className="text-white text-sm font-medium truncate">{title}</p>

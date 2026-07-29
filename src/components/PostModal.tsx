@@ -144,9 +144,16 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             </h2>
 
             {post.price && (
-              <p className="text-lg font-heading font-semibold text-[#2c2825] mb-1">
-                {lang === "cs" ? convertPriceToCzk(post.price) : post.price}
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-lg font-heading font-semibold text-[#2c2825]">
+                  {lang === "cs" ? convertPriceToCzk(post.price) : post.price}
+                </p>
+                {post.is_discounted && (
+                  <span className="bg-[#CE2B37] text-white text-[10px] tracking-[0.15em] uppercase px-2 py-0.5 font-semibold">
+                    {lang === "ru" ? "Скидка" : lang === "cs" ? "Sleva" : "Sale"}
+                  </span>
+                )}
+              </div>
             )}
 
             {post.stock_meters != null && post.stock_meters > 0 && (

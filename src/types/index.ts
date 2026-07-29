@@ -12,6 +12,7 @@ export interface Post {
   tags: string[];
   categories: string[];
   is_new: boolean;
+  is_discounted?: boolean;
   price: string;
   created_at: string;
   sku?: string;

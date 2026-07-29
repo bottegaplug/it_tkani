@@ -119,6 +119,7 @@ export default function AdminPage() {
   const [videos, setVideos] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isNew, setIsNew] = useState(false);
+  const [isDiscounted, setIsDiscounted] = useState(false);
   const [price, setPrice] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -362,6 +363,7 @@ export default function AdminPage() {
     setVideos([]);
     setCategories([]);
     setIsNew(false);
+    setIsDiscounted(false);
     setPrice("");
     setSku("");
     setStockMeters("");
@@ -378,6 +380,7 @@ export default function AdminPage() {
     setVideos(post.videos || []);
     setCategories(post.categories || []);
     setIsNew(post.is_new);
+    setIsDiscounted(!!post.is_discounted);
     setPrice(post.price || "");
     setSku(post.sku || "");
     setStockMeters(post.stock_meters != null ? String(post.stock_meters) : "");
@@ -470,6 +473,7 @@ export default function AdminPage() {
       tags: [],
       categories,
       is_new: isNew,
+      is_discounted: isDiscounted,
       price,
       sku: sku.trim() || null,
       stock_meters: stockMeters !== "" ? parseFloat(stockMeters) : null,
@@ -1486,6 +1490,28 @@ $$ LANGUAGE sql;`}</pre>
                 <span className="text-sm text-[#2c2825]">Новинка</span>
               </label>
 
+              {/* Discount toggle — shows a red ribbon on the product card */}
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isDiscounted}
+                  onClick={() => setIsDiscounted(!isDiscounted)}
+                  className={`relative w-11 h-6 rounded-none transition-colors ${
+                    isDiscounted ? "bg-[#CE2B37]" : "bg-[#e8e0d8]"
+                  }`}
+                >
+                  <span
+                    className="absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white transition-transform"
+                    style={{ transform: isDiscounted ? "translateX(20px)" : "translateX(0)" }}
+                  />
+                </button>
+                <span className="text-sm text-[#2c2825]">
+                  Скидка
+                  <span className="ml-2 text-xs text-[#8a8178]">лента на карточке товара</span>
+                </span>
+              </label>
+
               {/* Submit */}
               <div className="flex gap-3 pt-2">
                 <button
@@ -1598,6 +1624,11 @@ $$ LANGUAGE sql;`}</pre>
                   {post.is_new && (
                     <span className="text-[10px] bg-[#2c2825] text-white px-1.5 py-0.5 uppercase tracking-wider shrink-0">
                       New
+                    </span>
+                  )}
+                  {post.is_discounted && (
+                    <span className="text-[10px] bg-[#CE2B37] text-white px-1.5 py-0.5 uppercase tracking-wider shrink-0">
+                      Скидка
                     </span>
                   )}
                   {post.stock_meters === 0 && (
