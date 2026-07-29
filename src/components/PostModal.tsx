@@ -149,7 +149,7 @@ export default function PostModal({ post, onClose }: PostModalProps) {
                   {lang === "cs" ? convertPriceToCzk(post.price) : post.price}
                 </p>
                 {post.is_discounted && (
-                  <span className="bg-[#a8555c] text-white text-[10px] tracking-[0.15em] uppercase px-2 py-0.5 font-semibold">
+                  <span className="bg-[#a8555c] text-white font-heading text-sm tracking-[0.15em] uppercase px-2.5 py-0.5 font-semibold">
                     {lang === "ru" ? "Скидка" : lang === "cs" ? "Sleva" : "Sale"}
                   </span>
                 )}
