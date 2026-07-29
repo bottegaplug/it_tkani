@@ -1498,7 +1498,7 @@ $$ LANGUAGE sql;`}</pre>
                   aria-checked={isDiscounted}
                   onClick={() => setIsDiscounted(!isDiscounted)}
                   className={`relative w-11 h-6 rounded-none transition-colors ${
-                    isDiscounted ? "bg-[#CE2B37]" : "bg-[#e8e0d8]"
+                    isDiscounted ? "bg-[#a8555c]" : "bg-[#e8e0d8]"
                   }`}
                 >
                   <span
@@ -1627,7 +1627,7 @@ $$ LANGUAGE sql;`}</pre>
                     </span>
                   )}
                   {post.is_discounted && (
-                    <span className="text-[10px] bg-[#CE2B37] text-white px-1.5 py-0.5 uppercase tracking-wider shrink-0">
+                    <span className="text-[10px] bg-[#a8555c] text-white px-1.5 py-0.5 uppercase tracking-wider shrink-0">
                       Скидка
                     </span>
                   )}

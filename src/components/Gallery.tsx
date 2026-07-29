@@ -60,8 +60,8 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
 
       {/* Discount ribbon — full-width band sitting a little below the top edge */}
       {post.is_discounted && (
-        <div className="absolute inset-x-0 top-[14%] bg-[#CE2B37] text-white text-center py-1.5 shadow-md pointer-events-none">
-          <span className="text-[11px] tracking-[0.22em] uppercase font-semibold">
+        <div className="absolute inset-x-0 top-[14%] bg-[#a8555c] text-white text-center py-1 shadow-sm pointer-events-none">
+          <span className="text-[10px] tracking-[0.2em] uppercase font-medium">
             {lang === "ru" ? "Скидка" : lang === "cs" ? "Sleva" : "Sale"}
           </span>
         </div>
