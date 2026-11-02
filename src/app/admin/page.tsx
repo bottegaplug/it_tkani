@@ -5,6 +5,7 @@ import type { Post } from "@/types";
 import { uploadFile } from "@/lib/upload-client";
 import { FABRIC_CATEGORIES } from "@/lib/categories";
 import { parseRub, priceForLang } from "@/lib/currency";
+import { useLang } from "@/context/LanguageContext";
 
 interface AttachedPost {
   id: string;
@@ -124,6 +125,7 @@ export default function AdminPage() {
   const [oldPrice, setOldPrice] = useState("");
   const [price, setPrice] = useState("");
   // Live preview of how the ruble price reads on the other site versions
+  const { rates } = useLang();
   const priceRub = parseRub(price);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -1335,7 +1337,7 @@ $$ LANGUAGE sql;`}</pre>
                   </div>
                   {priceRub != null && (
                     <p className="text-xs text-[#8a8178] mt-1.5">
-                      EN: {priceForLang(String(priceRub), "en")} · CZ: {priceForLang(String(priceRub), "cs")}
+                      EN: {priceForLang(priceRub, "en", rates)} · CZ: {priceForLang(priceRub, "cs", rates)}
                     </p>
                   )}
                 </div>

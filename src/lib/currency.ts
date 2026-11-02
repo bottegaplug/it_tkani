@@ -1,17 +1,28 @@
 // ══════════════════════════════════════════════════════════
-//  КУРСЫ ВАЛЮТ — меняй здесь, когда курс уйдёт
+//  ВАЛЮТЫ
 //  Цены в админке задаются ТОЛЬКО в рублях за метр.
 //  Английская версия показывает евро, чешская — кроны.
+//
+//  Курсы подтягиваются автоматически с Центробанка РФ
+//  (см. /api/rates) и кэшируются на сервере.
+//  Константы ниже — только запасной вариант, если ЦБ недоступен.
 // ══════════════════════════════════════════════════════════
-
-/** Сколько рублей в одном евро */
-export const RUB_PER_EUR = 95;
-
-/** Сколько рублей в одной чешской кроне */
-export const RUB_PER_CZK = 4;
 
 export type Lang = "ru" | "en" | "cs";
 export type Currency = "rub" | "eur" | "czk";
+
+export interface Rates {
+  /** Сколько рублей в одном евро */
+  rubPerEur: number;
+  /** Сколько рублей в одной чешской кроне */
+  rubPerCzk: number;
+}
+
+/** Запасные курсы — используются, только если ЦБ не ответил */
+export const FALLBACK_RATES: Rates = {
+  rubPerEur: 95,
+  rubPerCzk: 4,
+};
 
 /** Какая валюта показывается на каждой версии сайта */
 export const CURRENCY_BY_LANG: Record<Lang, Currency> = {
@@ -33,18 +44,24 @@ export function parseRub(price: string | number | null | undefined): number | nu
   return isNaN(n) || n <= 0 ? null : n;
 }
 
-/** Переводит рубли в валюту языка. Округление вверх до целой единицы. */
-export function convertFromRub(rub: number, lang: Lang): number {
-  if (lang === "en") return Math.ceil(rub / RUB_PER_EUR);
-  if (lang === "cs") return Math.ceil(rub / RUB_PER_CZK);
-  return Math.round(rub);
+/** Округление вверх до десятых: 38.84 → 38.9 */
+function ceilToTenth(n: number): number {
+  return Math.ceil(n * 10) / 10;
 }
 
-/** Форматирует сумму в валюте языка: "950 ₽" · "€10" · "238 Kč" */
+/** Переводит рубли в валюту языка, округляя вверх до десятых */
+export function convertFromRub(rub: number, lang: Lang, rates: Rates = FALLBACK_RATES): number {
+  if (lang === "en") return ceilToTenth(rub / rates.rubPerEur);
+  if (lang === "cs") return ceilToTenth(rub / rates.rubPerCzk);
+  return ceilToTenth(rub);
+}
+
+/** Форматирует сумму: "950 ₽" · "€38,9" · "923,5 Kč" */
 export function formatAmount(amount: number, lang: Lang): string {
-  if (lang === "en") return `€${amount.toLocaleString("en-US")}`;
-  if (lang === "cs") return `${amount.toLocaleString("cs-CZ")} Kč`;
-  return `${amount.toLocaleString("ru-RU")} ₽`;
+  const opts = { maximumFractionDigits: 1 } as const;
+  if (lang === "en") return `€${amount.toLocaleString("en-US", opts)}`;
+  if (lang === "cs") return `${amount.toLocaleString("cs-CZ", opts)} Kč`;
+  return `${amount.toLocaleString("ru-RU", opts)} ₽`;
 }
 
 /** Единица измерения метра на языке сайта */
@@ -53,17 +70,20 @@ export function meterUnit(lang: Lang): string {
 }
 
 /**
- * Главная функция показа цены товара.
- * Цена из базы (всегда рубли) → строка в валюте языка, за метр.
+ * Цена товара: рубли из базы → строка в валюте языка, за метр.
  * "950 руб/м" + "en" → "€10/m"
  */
-export function priceForLang(price: string | number | null | undefined, lang: Lang): string {
+export function priceForLang(
+  price: string | number | null | undefined,
+  lang: Lang,
+  rates: Rates = FALLBACK_RATES
+): string {
   const rub = parseRub(price);
   if (rub == null) return typeof price === "string" ? price : "";
-  return `${formatAmount(convertFromRub(rub, lang), lang)}/${meterUnit(lang)}`;
+  return `${formatAmount(convertFromRub(rub, lang, rates), lang)}/${meterUnit(lang)}`;
 }
 
 /** То же, но без суффикса «/м» — для итогов и строк заказа */
-export function totalForLang(rub: number, lang: Lang): string {
-  return formatAmount(convertFromRub(rub, lang), lang);
+export function totalForLang(rub: number, lang: Lang, rates: Rates = FALLBACK_RATES): string {
+  return formatAmount(convertFromRub(rub, lang, rates), lang);
 }

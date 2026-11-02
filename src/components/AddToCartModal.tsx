@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import type { Post } from "@/types";
 import { useLang } from "@/context/LanguageContext";
 import { metersToFtHint } from "@/lib/units";
-import { priceForLang } from "@/lib/currency";
 
 interface AddToCartModalProps {
   post: Post;
@@ -19,7 +18,7 @@ const QTY_REGEX = /^\d*[.,]?\d{0,2}$/;
 const parseQty = (v: string) => parseFloat(v.replace(",", "."));
 
 export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalProps) {
-  const { lang, t } = useLang();
+  const { lang, t, fmtPrice } = useLang();
   const [qty, setQty] = useState("");
   const [error, setError] = useState("");
 
@@ -98,7 +97,7 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
                 <p className="text-xs text-[#8a8178] mt-0.5">SKU: {post.sku}</p>
               )}
               {post.price && (
-                <p className="text-sm font-heading text-[#2c2825] mt-0.5">{priceForLang(post.price, lang)}</p>
+                <p className="text-sm font-heading text-[#2c2825] mt-0.5">{fmtPrice(post.price)}</p>
               )}
               {stockDisplay && (
                 <p className="text-xs text-[#8a8178] mt-0.5">{stockDisplay} {t.inStock}</p>

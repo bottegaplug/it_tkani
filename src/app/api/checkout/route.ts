@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseRub, convertFromRub, CURRENCY_BY_LANG, type Lang, type Currency } from "@/lib/currency";
+import { parseRub, convertFromRub, CURRENCY_BY_LANG, type Lang, type Currency, type Rates } from "@/lib/currency";
+import { getRates } from "@/lib/rates-server";
 
 interface CartItemPayload {
   postId: string;
@@ -32,8 +33,8 @@ function chargeCurrency(lang?: string): Currency {
 }
 
 /** Rubles → minor units (cents/haléře/копейки) of the charge currency */
-function rubToMinorUnits(rub: number, lang?: string): number {
-  return Math.round(convertFromRub(rub, (lang as Lang) ?? "ru") * 100);
+function rubToMinorUnits(rub: number, lang: string | undefined, rates: Rates): number {
+  return Math.round(convertFromRub(rub, (lang as Lang) ?? "ru", rates) * 100);
 }
 
 // Stripe's per-amount ceiling, in minor units
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
     // Every amount is summed in rubles, then converted once to the currency
     // the customer was shown — so the charge matches the displayed price.
     const currency = chargeCurrency(customer.lang);
+    const rates = await getRates();
     const discountMult = customer.discountPercent
       ? 1 - customer.discountPercent / 100
       : 1;
@@ -92,7 +94,7 @@ export async function POST(req: NextRequest) {
       const qty = Math.min(Math.max(item.quantity || 1, 0.1), 500);
       const perMeterRub = parseRub(item.price);
       const lineRub = perMeterRub != null ? perMeterRub * qty * discountMult : 0;
-      const unitAmount = perMeterRub != null ? rubToMinorUnits(lineRub, customer.lang) : 100;
+      const unitAmount = perMeterRub != null ? rubToMinorUnits(lineRub, customer.lang, rates) : 100;
 
       if (unitAmount > STRIPE_MAX_MINOR) {
         return NextResponse.json({ error: "amount_too_large" }, { status: 400 });
@@ -122,7 +124,7 @@ export async function POST(req: NextRequest) {
         price_data: {
           currency,
           product_data: { name: shippingLabel },
-          unit_amount: rubToMinorUnits(customer.shippingRub, customer.lang),
+          unit_amount: rubToMinorUnits(customer.shippingRub, customer.lang, rates),
         },
         quantity: 1,
       });

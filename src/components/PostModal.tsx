@@ -7,7 +7,6 @@ import { useCart } from "@/context/CartContext";
 import { useChat } from "@/context/ChatContext";
 import AddToCartModal from "@/components/AddToCartModal";
 import BuyNowModal from "@/components/BuyNowModal";
-import { priceForLang } from "@/lib/currency";
 
 interface PostModalProps {
   post: Post;
@@ -22,7 +21,7 @@ export default function PostModal({ post, onClose }: PostModalProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBuyNowModal, setShowBuyNowModal] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
-  const { lang, t } = useLang();
+  const { lang, t, fmtPrice } = useLang();
   const { addItem, openCart } = useCart();
   const { forwardPostToChat } = useChat();
 
@@ -148,11 +147,11 @@ export default function PostModal({ post, onClose }: PostModalProps) {
                 {/* Pre-discount price, struck through in the ribbon colour */}
                 {post.is_discounted && post.old_price && (
                   <p className="text-base font-heading text-[#a8555c] line-through decoration-[1.5px]">
-                    {priceForLang(post.old_price, lang)}
+                    {fmtPrice(post.old_price)}
                   </p>
                 )}
                 <p className="text-lg font-heading font-semibold text-[#2c2825]">
-                  {priceForLang(post.price, lang)}
+                  {fmtPrice(post.price)}
                 </p>
                 {post.is_discounted && (
                   <span className="bg-[#a8555c] text-white font-heading text-sm tracking-[0.15em] uppercase px-2.5 py-0.5 font-semibold">

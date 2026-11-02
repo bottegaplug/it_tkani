@@ -5,7 +5,6 @@ import type { Post } from "@/types";
 import { useLang } from "@/context/LanguageContext";
 import { COUNTRIES, getCountryLabel, isValidPhone, isValidEmail } from "@/lib/countries";
 import { metersToFtHint } from "@/lib/units";
-import { priceForLang } from "@/lib/currency";
 
 interface BuyNowModalProps {
   post: Post;
@@ -48,7 +47,7 @@ interface FieldErrors {
 }
 
 export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
-  const { lang, t } = useLang();
+  const { lang, t, fmtPrice } = useLang();
   const [step, setStep] = useState<"qty" | "contact">("qty");
   const [qty, setQty] = useState("");
   const [qtyError, setQtyError] = useState("");
@@ -275,7 +274,7 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-[#2c2825] truncate">{displayTitle}</p>
                   {post.sku && <p className="text-xs text-[#8a8178] mt-0.5">SKU: {post.sku}</p>}
-                  {post.price && <p className="text-sm font-heading text-[#2c2825] mt-0.5">{priceForLang(post.price, lang)}</p>}
+                  {post.price && <p className="text-sm font-heading text-[#2c2825] mt-0.5">{fmtPrice(post.price)}</p>}
                   {stockDisplay && (
                     <p className="text-xs text-[#8a8178] mt-0.5">{stockDisplay} {t.inStock}</p>
                   )}
@@ -316,7 +315,7 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
               {/* Item summary */}
               <div className="bg-[#f5f0eb] p-3 mb-5 text-sm">
                 <p className="font-medium text-[#2c2825]">{displayTitle}</p>
-                <p className="text-[#8a8178] text-xs mt-0.5">{qty} {t.metersUnit} · {priceForLang(post.price, lang)}</p>
+                <p className="text-[#8a8178] text-xs mt-0.5">{qty} {t.metersUnit} · {fmtPrice(post.price)}</p>
               </div>
 
               {/* Contact form */}

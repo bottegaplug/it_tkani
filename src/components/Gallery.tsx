@@ -3,7 +3,6 @@
 import type { Post } from "@/types";
 import { useLang } from "@/context/LanguageContext";
 import type { Lang } from "@/lib/i18n";
-import { priceForLang } from "@/lib/currency";
 
 function getTitle(post: Post, lang: Lang): string {
   if (lang !== "ru" && post.translations?.[lang]?.title) {
@@ -18,7 +17,7 @@ interface GalleryCardProps {
 }
 
 function GalleryCard({ post, onPostClick }: GalleryCardProps) {
-  const { lang, t } = useLang();
+  const { lang, t, fmtPrice } = useLang();
   const title = getTitle(post, lang);
 
   return (
@@ -41,7 +40,10 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
 
       {/* Photo count badge */}
       {post.images?.length > 1 && (
-        <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 flex items-center gap-1 pointer-events-none">
+        <div
+          className="absolute right-3 bg-black/60 text-white text-xs px-2 py-1 flex items-center gap-1 pointer-events-none"
+          style={{ top: post.is_discounted ? 96 : 12 }}
+        >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="18" height="18" rx="0" />
             <circle cx="8.5" cy="8.5" r="1.5" />
@@ -58,12 +60,25 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
         </div>
       )}
 
-      {/* Discount ribbon — full-width band sitting a little below the top edge */}
+      {/* Discount ribbon — wraps the top-right corner diagonally.
+          The outer square clips the band so it reads as folded round the edge. */}
       {post.is_discounted && (
-        <div className="absolute inset-x-0 top-[14%] bg-[#a8555c] text-white text-center py-0.5 shadow-sm pointer-events-none">
-          <span className="font-heading text-base tracking-[0.18em] uppercase font-semibold leading-tight">
-            {lang === "ru" ? "Скидка" : lang === "cs" ? "Sleva" : "Sale"}
-          </span>
+        <div className="absolute top-0 right-0 w-[120px] h-[120px] overflow-hidden pointer-events-none z-10">
+          <div
+            className="absolute bg-[#a8555c] text-white text-center shadow-md"
+            style={{
+              width: 180,
+              top: 30,
+              right: -45,
+              transform: "rotate(45deg)",
+              paddingTop: 4,
+              paddingBottom: 4,
+            }}
+          >
+            <span className="font-heading text-sm tracking-[0.16em] uppercase font-semibold leading-none">
+              {lang === "ru" ? "Скидка" : lang === "cs" ? "Sleva" : "Sale"}
+            </span>
+          </div>
         </div>
       )}
 
@@ -74,11 +89,11 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
           <p className="text-xs mt-0.5 flex items-center gap-1.5">
             {post.is_discounted && post.old_price && (
               <span className="text-[#e8a0a6] line-through">
-                {priceForLang(post.old_price, lang)}
+                {fmtPrice(post.old_price)}
               </span>
             )}
             <span className="text-white/80">
-              {priceForLang(post.price, lang)}
+              {fmtPrice(post.price)}
             </span>
           </p>
         )}

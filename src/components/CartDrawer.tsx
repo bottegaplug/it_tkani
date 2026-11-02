@@ -8,7 +8,7 @@ import type { Lang } from "@/lib/i18n";
 import type { Post } from "@/types";
 import { COUNTRIES, getCountryLabel, isValidPhone, isValidEmail } from "@/lib/countries";
 import { getShippingRub, shippingZoneLabel, formatShippingCost } from "@/lib/shipping";
-import { parseRub, totalForLang, priceForLang } from "@/lib/currency";
+import { parseRub } from "@/lib/currency";
 
 function getTitle(post: Post, lang: Lang): string {
   if (lang !== "ru" && post.translations?.[lang]?.title) {
@@ -48,7 +48,7 @@ interface FieldErrors {
 
 export default function CartDrawer() {
   const { items, removeItem, isCartOpen, closeCart, stockIssues, lastAdded, clearLastAdded, openCart } = useCart();
-  const { lang, t } = useLang();
+  const { lang, t, fmtPrice, fmtTotal } = useLang();
   const { forwardCartToChat } = useChat();
   const [view, setView] = useState<"cart" | "checkout">("cart");
   const [contact, setContact] = useState<ContactForm>({
@@ -93,12 +93,12 @@ export default function CartDrawer() {
       }
       const lineRub = rub * item.quantity;
       totalRub += lineRub;
-      lines.push(totalForLang(lineRub, lang));
+      lines.push(fmtTotal(lineRub));
     }
 
     return {
       lines,
-      total: canSum && totalRub > 0 ? totalForLang(totalRub, lang) : null,
+      total: canSum && totalRub > 0 ? fmtTotal(totalRub) : null,
       totalRub: canSum && totalRub > 0 ? totalRub : null,
     };
   }, [items, lang]);
@@ -382,7 +382,7 @@ export default function CartDrawer() {
                           )}
                           <p className="text-xs text-[#8a8178] mt-0.5">{item.quantity} {t.metersUnit}</p>
                           {item.post.price && (
-                            <p className="text-xs text-[#2c2825] mt-0.5">{priceForLang(item.post.price, lang)}</p>
+                            <p className="text-xs text-[#2c2825] mt-0.5">{fmtPrice(item.post.price)}</p>
                           )}
                           {hasIssue && (
                             <p className="text-xs text-red-500 mt-0.5">{t.stockIssueText}</p>
@@ -489,7 +489,7 @@ export default function CartDrawer() {
                         <p className="text-[#2c2825] truncate">{title}</p>
                         <p className="text-xs text-[#8a8178]">
                           {item.quantity} {t.metersUnit}
-                          {item.post.price ? ` × ${priceForLang(item.post.price, lang).replace(/\/.*/, "")}` : ""}
+                          {item.post.price ? ` × ${fmtPrice(item.post.price).replace(/\/.*/, "")}` : ""}
                         </p>
                       </div>
                       {lineTotal && (
@@ -504,7 +504,7 @@ export default function CartDrawer() {
                   <div className="pt-2 border-t border-[#e8e0d8] space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#8a8178]">{lang === "ru" ? "Подытог" : lang === "en" ? "Subtotal" : "Mezisoučet"}</span>
-                      <span className="text-[#2c2825]">{totalForLang(priceInfo.totalRub, lang)}</span>
+                      <span className="text-[#2c2825]">{fmtTotal(priceInfo.totalRub)}</span>
                     </div>
                     {contact.countryCode && (
                       <div className="flex justify-between text-sm">
@@ -520,16 +520,15 @@ export default function CartDrawer() {
                       <div className="flex justify-between text-sm">
                         <span className="text-green-700">{promoCode} −{discountPercent}%</span>
                         <span className="text-green-700">
-                          −{totalForLang(priceInfo.totalRub * discountPercent / 100, lang)}
+                          −{fmtTotal(priceInfo.totalRub * discountPercent / 100)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm pt-1 border-t border-[#e8e0d8]">
                       <span className="font-heading font-semibold text-[#2c2825]">{lang === "ru" ? "Итого" : lang === "en" ? "Total" : "Celkem"}</span>
                       <span className="font-heading font-semibold text-[#2c2825]">
-                        {totalForLang(
-                          priceInfo.totalRub * (1 - discountPercent / 100) + (contact.countryCode ? shippingRub : 0),
-                          lang
+                        {fmtTotal(
+                          priceInfo.totalRub * (1 - discountPercent / 100) + (contact.countryCode ? shippingRub : 0)
                         )}
                       </span>
                     </div>
