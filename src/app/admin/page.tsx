@@ -120,6 +120,7 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [isNew, setIsNew] = useState(false);
   const [isDiscounted, setIsDiscounted] = useState(false);
+  const [oldPrice, setOldPrice] = useState("");
   const [price, setPrice] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -364,6 +365,7 @@ export default function AdminPage() {
     setCategories([]);
     setIsNew(false);
     setIsDiscounted(false);
+    setOldPrice("");
     setPrice("");
     setSku("");
     setStockMeters("");
@@ -381,6 +383,7 @@ export default function AdminPage() {
     setCategories(post.categories || []);
     setIsNew(post.is_new);
     setIsDiscounted(!!post.is_discounted);
+    setOldPrice(post.old_price || "");
     setPrice(post.price || "");
     setSku(post.sku || "");
     setStockMeters(post.stock_meters != null ? String(post.stock_meters) : "");
@@ -474,6 +477,7 @@ export default function AdminPage() {
       categories,
       is_new: isNew,
       is_discounted: isDiscounted,
+      old_price: isDiscounted && oldPrice.trim() ? oldPrice.trim() : null,
       price,
       sku: sku.trim() || null,
       stock_meters: stockMeters !== "" ? parseFloat(stockMeters) : null,
@@ -1511,6 +1515,26 @@ $$ LANGUAGE sql;`}</pre>
                   <span className="ml-2 text-xs text-[#8a8178]">лента на карточке товара</span>
                 </span>
               </label>
+
+              {/* Old price — only meaningful while the discount is on */}
+              {isDiscounted && (
+                <div className="pl-14 -mt-2">
+                  <label className="block text-sm text-[#2c2825] mb-1.5">
+                    Цена до скидки
+                    <span className="ml-2 text-xs text-[#8a8178]">будет зачёркнута рядом с новой ценой</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={oldPrice}
+                    onChange={(e) => setOldPrice(e.target.value)}
+                    placeholder="€200/м"
+                    className="w-full max-w-xs py-2.5 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
+                  />
+                  <p className="text-xs text-[#8a8178] mt-1.5">
+                    В поле «Цена» выше оставьте новую цену — по ней считается заказ.
+                  </p>
+                </div>
+              )}
 
               {/* Submit */}
               <div className="flex gap-3 pt-2">

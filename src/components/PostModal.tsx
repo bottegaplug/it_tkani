@@ -144,7 +144,13 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             </h2>
 
             {post.price && (
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                {/* Pre-discount price, struck through in the ribbon colour */}
+                {post.is_discounted && post.old_price && (
+                  <p className="text-base font-heading text-[#a8555c] line-through decoration-[1.5px]">
+                    {lang === "cs" ? convertPriceToCzk(post.old_price) : post.old_price}
+                  </p>
+                )}
                 <p className="text-lg font-heading font-semibold text-[#2c2825]">
                   {lang === "cs" ? convertPriceToCzk(post.price) : post.price}
                 </p>

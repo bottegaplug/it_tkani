@@ -71,8 +71,15 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
         <p className="text-white text-sm font-medium truncate">{title}</p>
         {post.price && (
-          <p className="text-white/80 text-xs mt-0.5">
-            {lang === "cs" ? convertPriceToCzk(post.price) : post.price}
+          <p className="text-xs mt-0.5 flex items-center gap-1.5">
+            {post.is_discounted && post.old_price && (
+              <span className="text-[#e8a0a6] line-through">
+                {lang === "cs" ? convertPriceToCzk(post.old_price) : post.old_price}
+              </span>
+            )}
+            <span className="text-white/80">
+              {lang === "cs" ? convertPriceToCzk(post.price) : post.price}
+            </span>
           </p>
         )}
       </div>

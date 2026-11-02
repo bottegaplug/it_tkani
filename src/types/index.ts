@@ -14,6 +14,8 @@ export interface Post {
   is_new: boolean;
   is_discounted?: boolean;
   price: string;
+  /** Pre-discount price, shown struck through next to `price` */
+  old_price?: string | null;
   created_at: string;
   sku?: string;
   stock_meters?: number | null;
