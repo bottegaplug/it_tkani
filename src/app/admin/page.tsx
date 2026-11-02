@@ -131,6 +131,14 @@ export default function AdminPage() {
   const [uploadError, setUploadError] = useState("");
   const [sku, setSku] = useState("");
   const [stockMeters, setStockMeters] = useState<string>("");
+  // Отрезы как строки — поля ввода; пустые игнорируются при сохранении
+  const [cuts, setCuts] = useState<string[]>([""]);
+  const parsedCuts = cuts
+    .map((c) => parseFloat(c.replace(",", ".")))
+    .filter((n) => !isNaN(n) && n > 0);
+  const cutsTotal = parsedCuts.length
+    ? Math.round(parsedCuts.reduce((a, b) => a + b, 0) * 100) / 100
+    : null;
   const [adminSearch, setAdminSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -374,6 +382,7 @@ export default function AdminPage() {
     setPrice("");
     setSku("");
     setStockMeters("");
+    setCuts([""]);
     setTranslations({});
     setEditing(null);
     setShowForm(false);
@@ -392,6 +401,13 @@ export default function AdminPage() {
     setPrice(post.price || "");
     setSku(post.sku || "");
     setStockMeters(post.stock_meters != null ? String(post.stock_meters) : "");
+    setCuts(
+      post.cuts?.length
+        ? post.cuts.map(String)
+        : post.stock_meters != null
+          ? [String(post.stock_meters)]
+          : [""]
+    );
     setTranslations(post.translations || {});
     setShowForm(true);
   };
@@ -485,7 +501,9 @@ export default function AdminPage() {
       old_price: isDiscounted && oldPrice.trim() ? oldPrice.trim() : null,
       price,
       sku: sku.trim() || null,
-      stock_meters: stockMeters !== "" ? parseFloat(stockMeters) : null,
+      cuts: parsedCuts.length ? parsedCuts : null,
+      // Остаток — сумма отрезов, чтобы существующие проверки наличия работали
+      stock_meters: cutsTotal,
       translations,
     };
 
@@ -1353,20 +1371,64 @@ $$ LANGUAGE sql;`}</pre>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm text-[#2c2825] mb-1.5">
-                  Остаток на складе (м)
-                  <span className="ml-2 text-xs text-[#8a8178]">оставьте пустым — без ограничений</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={stockMeters}
-                  onChange={(e) => setStockMeters(e.target.value)}
-                  placeholder="Например: 3.35"
-                  className="w-full py-2.5 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
-                />
+              {/* Отрезы: несколько кусков одной ткани, которые нельзя сложить */}
+              <div className="border border-[#e8e0d8] p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm text-[#2c2825]">Отрезы ткани (м)</span>
+                  <button
+                    type="button"
+                    onClick={() => setCuts((c) => [...c, ""])}
+                    className="text-xs px-3 py-1.5 border border-[#e8e0d8] text-[#2c2825] hover:bg-[#f5f0eb] transition-colors"
+                  >
+                    + Добавить отрез
+                  </button>
+                </div>
+                <p className="text-xs text-[#8a8178] mb-3">
+                  Если ткань лежит одним куском — оставьте один отрез.
+                  Несколько кусков не складываются: покупатель выбирает конкретный.
+                </p>
+
+                <div className="space-y-2">
+                  {cuts.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-[#8a8178] w-16 shrink-0">Отрез {i + 1}</span>
+                      <div className="relative flex-1 max-w-[160px]">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={c}
+                          onChange={(e) =>
+                            setCuts((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))
+                          }
+                          placeholder="3.5"
+                          className="w-full py-2 pl-3 pr-8 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#8a8178] pointer-events-none">м</span>
+                      </div>
+                      {cuts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setCuts((prev) => prev.filter((_, j) => j !== i))}
+                          title="Убрать отрез"
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6 6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-xs text-[#8a8178] mt-3 pt-3 border-t border-[#e8e0d8]">
+                  {cutsTotal != null
+                    ? `Всего ${cutsTotal} м в ${cuts.filter((c) => c.trim()).length} ${
+                        cuts.filter((c) => c.trim()).length === 1 ? "отрезе" : "отрезах"
+                      }`
+                    : "Метраж не задан — товар будет без ограничения по остатку"}
+                </p>
               </div>
 
               {uploadError && (

@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
         translations: body.translations || {},
         sku: body.sku || null,
         stock_meters: body.stock_meters != null ? body.stock_meters : null,
+        cuts: body.cuts ?? null,
       })
       .select()
       .single();
@@ -89,6 +90,7 @@ export async function POST(req: NextRequest) {
     videos: body.videos || [],
     sku: body.sku || null,
     stock_meters: body.stock_meters != null ? body.stock_meters : null,
+    cuts: body.cuts ?? null,
   });
   return NextResponse.json(post);
 }
@@ -118,6 +120,7 @@ export async function PUT(req: NextRequest) {
         translations: body.translations || {},
         sku: body.sku || null,
         stock_meters: body.stock_meters != null ? body.stock_meters : null,
+        cuts: body.cuts ?? null,
       })
       .eq("id", body.id)
       .select()
@@ -141,6 +144,7 @@ export async function PUT(req: NextRequest) {
     videos: body.videos || [],
     sku: body.sku || null,
     stock_meters: body.stock_meters != null ? body.stock_meters : null,
+    cuts: body.cuts ?? null,
   });
   if (!updated) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

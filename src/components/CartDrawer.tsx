@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useCart } from "@/context/CartContext";
+import { useCart, cartKey } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
 import { useChat } from "@/context/ChatContext";
 import type { Lang } from "@/lib/i18n";
@@ -201,6 +201,7 @@ export default function CartDrawer() {
             title: getTitle(item.post, lang),
             quantity: item.quantity,
             price: item.post.price || "",
+            cutIndex: item.cutIndex,
             imageUrl: item.post.images?.[0] ?? null,
           })),
           customer: {
@@ -370,7 +371,7 @@ export default function CartDrawer() {
                     const title = getTitle(item.post, lang);
                     const hasIssue = issueIds.has(item.post.id);
                     return (
-                      <div key={item.post.id} className={`flex gap-3 p-4 ${hasIssue ? "bg-red-50" : ""}`}>
+                      <div key={cartKey(item.post.id, item.cutIndex)} className={`flex gap-3 p-4 ${hasIssue ? "bg-red-50" : ""}`}>
                         {item.post.images?.[0] && (
                           <img src={item.post.images[0]} alt={title}
                             className="w-16 h-16 object-cover bg-[#f5f0eb] shrink-0" />
@@ -380,7 +381,14 @@ export default function CartDrawer() {
                           {item.post.sku && (
                             <p className="text-xs text-[#8a8178] mt-0.5">SKU: {item.post.sku}</p>
                           )}
-                          <p className="text-xs text-[#8a8178] mt-0.5">{item.quantity} {t.metersUnit}</p>
+                          <p className="text-xs text-[#8a8178] mt-0.5">
+                            {item.quantity} {t.metersUnit}
+                            {item.cutIndex != null && (
+                              <span className="ml-1.5 text-[#b8b0a8]">
+                                ({lang === "ru" ? "отрез" : lang === "cs" ? "kus" : "piece"} {item.cutIndex + 1})
+                              </span>
+                            )}
+                          </p>
                           {item.post.price && (
                             <p className="text-xs text-[#2c2825] mt-0.5">{fmtPrice(item.post.price)}</p>
                           )}
@@ -389,7 +397,7 @@ export default function CartDrawer() {
                           )}
                         </div>
                         <button
-                          onClick={() => removeItem(item.post.id)}
+                          onClick={() => removeItem(cartKey(item.post.id, item.cutIndex))}
                           className="text-[#b8b0a8] hover:text-red-500 transition-colors shrink-0 p-1"
                           title={t.removeItem}
                         >
@@ -484,7 +492,7 @@ export default function CartDrawer() {
                   const title = getTitle(item.post, lang);
                   const lineTotal = priceInfo.lines[i];
                   return (
-                    <div key={item.post.id} className="flex justify-between text-sm gap-2">
+                    <div key={cartKey(item.post.id, item.cutIndex)} className="flex justify-between text-sm gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-[#2c2825] truncate">{title}</p>
                         <p className="text-xs text-[#8a8178]">

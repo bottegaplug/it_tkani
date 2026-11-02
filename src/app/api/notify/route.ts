@@ -7,6 +7,8 @@ interface OrderItem {
   title: string;
   quantity: number;
   price?: string;
+  /** Индекс отреза, если ткань лежит несколькими кусками */
+  cut?: number;
 }
 
 interface CustomerMeta {
@@ -84,12 +86,31 @@ async function deductStock(items: OrderItem[]) {
     if (!item.id || !item.quantity) continue;
     const { data: post } = await supabase
       .from("posts")
-      .select("stock_meters")
+      .select("stock_meters, cuts")
       .eq("id", item.id)
       .single();
 
-    if (post && post.stock_meters != null) {
-      const newStock = Math.max(0, post.stock_meters - item.quantity);
+    if (!post) continue;
+
+    // A specific cut was ordered — take the metres off that piece only,
+    // then keep stock_meters as the sum of what is left.
+    if (item.cut != null && Array.isArray(post.cuts) && post.cuts[item.cut] != null) {
+      const cuts: number[] = post.cuts.map((c: number, i: number) =>
+        i === item.cut ? Math.max(0, Math.round((c - item.quantity) * 100) / 100) : c
+      );
+      const remaining = cuts.filter((c) => c > 0);
+      await supabase
+        .from("posts")
+        .update({
+          cuts: remaining.length ? remaining : null,
+          stock_meters: Math.round(remaining.reduce((a, b) => a + b, 0) * 100) / 100,
+        })
+        .eq("id", item.id);
+      continue;
+    }
+
+    if (post.stock_meters != null) {
+      const newStock = Math.max(0, Math.round((post.stock_meters - item.quantity) * 100) / 100);
       await supabase.from("posts").update({ stock_meters: newStock }).eq("id", item.id);
     }
   }

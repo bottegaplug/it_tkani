@@ -8,6 +8,7 @@ interface CartItemPayload {
   title: string;
   quantity: number;
   price?: string;
+  cutIndex?: number;
   imageUrl?: string | null;
 }
 
@@ -137,6 +138,7 @@ export async function POST(req: NextRequest) {
       title: i.title,
       quantity: i.quantity,
       price: i.price || "",
+      cut: i.cutIndex,
     }));
 
     const metadata: Record<string, string> = {

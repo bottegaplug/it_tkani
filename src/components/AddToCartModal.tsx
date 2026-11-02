@@ -7,7 +7,7 @@ import { metersToFtHint } from "@/lib/units";
 
 interface AddToCartModalProps {
   post: Post;
-  onAdd: (quantity: number) => void;
+  onAdd: (quantity: number, cutIndex?: number) => void;
   onClose: () => void;
 }
 
@@ -21,6 +21,12 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
   const { lang, t, fmtPrice } = useLang();
   const [qty, setQty] = useState("");
   const [error, setError] = useState("");
+
+  // Несколько отрезов — покупатель выбирает один, метраж ограничен им
+  const cuts = post.cuts?.filter((c) => c > 0) ?? [];
+  const hasCuts = cuts.length > 0;
+  const [cutIndex, setCutIndex] = useState(0);
+  const maxMeters = hasCuts ? cuts[cutIndex] : post.stock_meters ?? null;
 
   const displayTitle = (lang !== "ru" && post.translations?.[lang]?.title) || post.title;
 
@@ -36,6 +42,10 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
     ? `${post.stock_meters} ${t.metersUnit}`
     : null;
 
+  const cutLabel = lang === "ru" ? "Отрез" : lang === "cs" ? "Kus" : "Piece";
+  const chooseCutLabel =
+    lang === "ru" ? "Выберите отрез" : lang === "cs" ? "Vyberte kus" : "Choose a piece";
+
   const handleChange = (val: string) => {
     if (QTY_REGEX.test(val)) {
       setQty(val);
@@ -50,11 +60,11 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
       setError(t.enterPositiveNumber);
       return;
     }
-    if (post.stock_meters != null && num > post.stock_meters) {
-      setError(`${t.maxAvailable}: ${post.stock_meters} ${t.metersUnit}`);
+    if (maxMeters != null && num > maxMeters) {
+      setError(`${t.maxAvailable}: ${maxMeters} ${t.metersUnit}`);
       return;
     }
-    onAdd(num);
+    onAdd(num, hasCuts ? cutIndex : undefined);
     onClose();
   };
 
@@ -109,7 +119,36 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
           </div>
 
           <form onSubmit={handleSubmit}>
-            <label className="block text-sm text-[#2c2825] mb-1.5">{t.quantityMeters}</label>
+            {hasCuts && cuts.length > 1 && (
+              <div className="mb-4">
+                <label className="block text-sm text-[#2c2825] mb-1.5">{chooseCutLabel}</label>
+                <div className="flex flex-wrap gap-2">
+                  {cuts.map((c, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { setCutIndex(i); setQty(""); setError(""); }}
+                      className={`px-3 py-2 text-sm border transition-colors ${
+                        i === cutIndex
+                          ? "bg-[#2c2825] text-white border-[#2c2825]"
+                          : "bg-white text-[#2c2825] border-[#e8e0d8] hover:bg-[#f5f0eb]"
+                      }`}
+                    >
+                      {cutLabel} {i + 1} · {c} {t.metersUnit}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <label className="block text-sm text-[#2c2825] mb-1.5">
+              {t.quantityMeters}
+              {maxMeters != null && (
+                <span className="ml-2 text-xs text-[#8a8178]">
+                  {lang === "ru" ? "до" : lang === "cs" ? "až" : "up to"} {maxMeters} {t.metersUnit}
+                </span>
+              )}
+            </label>
             <input
               type="text"
               inputMode="decimal"

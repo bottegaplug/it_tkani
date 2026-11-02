@@ -14,6 +14,16 @@ import type { Post } from "@/types";
 export interface CartItem {
   post: Post;
   quantity: number;
+  /** Какой из отрезов ткани выбран (индекс в post.cuts) */
+  cutIndex?: number;
+}
+
+/**
+ * Один товар может лежать в корзине несколько раз — по строке на отрез,
+ * поэтому ключом служит пара «товар + отрез», а не один id.
+ */
+export function cartKey(postId: string, cutIndex?: number): string {
+  return cutIndex == null ? postId : `${postId}#${cutIndex}`;
 }
 
 export interface StockIssue {
@@ -25,9 +35,9 @@ export interface StockIssue {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (post: Post, qty: number) => void;
-  removeItem: (postId: string) => void;
-  updateQuantity: (postId: string, qty: number) => void;
+  addItem: (post: Post, qty: number, cutIndex?: number) => void;
+  removeItem: (key: string) => void;
+  updateQuantity: (key: string, qty: number) => void;
   clearCart: () => void;
   totalUniqueItems: number;
   stockIssues: StockIssue[];
@@ -36,7 +46,7 @@ interface CartContextType {
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  lastAdded: { post: Post; qty: number } | null;
+  lastAdded: { post: Post; qty: number; cutIndex?: number } | null;
   clearLastAdded: () => void;
 }
 
@@ -84,7 +94,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
   const [dismissed, setDismissed] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [lastAdded, setLastAdded] = useState<{ post: Post; qty: number } | null>(null);
+  const [lastAdded, setLastAdded] = useState<{ post: Post; qty: number; cutIndex?: number } | null>(null);
   const lastAddedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stockCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -113,13 +123,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       for (const item of currentItems) {
         const fresh = postMap.get(item.post.id);
         if (!fresh) continue;
-        if (fresh.stock_meters == null) continue; // unlimited
-        if (item.quantity > fresh.stock_meters) {
+        // A chosen cut is checked against that piece, not the overall total
+        const available =
+          item.cutIndex != null && fresh.cuts?.[item.cutIndex] != null
+            ? fresh.cuts[item.cutIndex]
+            : fresh.stock_meters;
+        if (available == null) continue; // unlimited
+        if (item.quantity > available) {
           issues.push({
             postId: item.post.id,
             title: item.post.title,
             requested: item.quantity,
-            available: fresh.stock_meters,
+            available,
           });
         }
       }
@@ -143,35 +158,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearLastAdded = useCallback(() => setLastAdded(null), []);
 
-  const addItem = useCallback((post: Post, qty: number) => {
+  const addItem = useCallback((post: Post, qty: number, cutIndex?: number) => {
+    const key = cartKey(post.id, cutIndex);
     setItems((prev) => {
-      const existing = prev.find((i) => i.post.id === post.id);
+      const existing = prev.find((i) => cartKey(i.post.id, i.cutIndex) === key);
       if (existing) {
         return prev.map((i) =>
-          i.post.id === post.id ? { ...i, quantity: i.quantity + qty } : i
+          cartKey(i.post.id, i.cutIndex) === key ? { ...i, quantity: i.quantity + qty } : i
         );
       }
-      return [...prev, { post, quantity: qty }];
+      return [...prev, { post, quantity: qty, cutIndex }];
     });
     // Show toast
-    setLastAdded({ post, qty });
+    setLastAdded({ post, qty, cutIndex });
     if (lastAddedTimerRef.current) clearTimeout(lastAddedTimerRef.current);
     lastAddedTimerRef.current = setTimeout(() => setLastAdded(null), 3000);
   }, []);
 
-  const removeItem = useCallback((postId: string) => {
-    setItems((prev) => prev.filter((i) => i.post.id !== postId));
-    setStockIssues((prev) => prev.filter((s) => s.postId !== postId));
+  const removeItem = useCallback((key: string) => {
+    setItems((prev) => prev.filter((i) => cartKey(i.post.id, i.cutIndex) !== key));
+    setStockIssues((prev) => prev.filter((s) => s.postId !== key.split("#")[0]));
   }, []);
 
-  const updateQuantity = useCallback((postId: string, qty: number) => {
-    if (qty <= 0) {
-      setItems((prev) => prev.filter((i) => i.post.id !== postId));
-    } else {
-      setItems((prev) =>
-        prev.map((i) => (i.post.id === postId ? { ...i, quantity: qty } : i))
-      );
-    }
+  const updateQuantity = useCallback((key: string, qty: number) => {
+    setItems((prev) =>
+      qty <= 0
+        ? prev.filter((i) => cartKey(i.post.id, i.cutIndex) !== key)
+        : prev.map((i) => (cartKey(i.post.id, i.cutIndex) === key ? { ...i, quantity: qty } : i))
+    );
   }, []);
 
   const clearCart = useCallback(() => {

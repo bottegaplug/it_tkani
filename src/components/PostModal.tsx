@@ -167,10 +167,23 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             )}
 
             {post.stock_meters != null && post.stock_meters > 0 && (
-              <p className="text-sm text-[#8a8178] mb-4">
-                {post.stock_meters} м{" "}
-                {lang === "en" ? "in stock" : lang === "cs" ? "skladem" : "в наличии"}
-              </p>
+              <div className="mb-4">
+                <p className="text-sm text-[#8a8178]">
+                  {post.stock_meters} м{" "}
+                  {lang === "en" ? "in stock" : lang === "cs" ? "skladem" : "в наличии"}
+                </p>
+                {/* Отдельные куски: сумму заказать нельзя, только отрез целиком или часть */}
+                {(post.cuts?.filter((c) => c > 0).length ?? 0) > 1 && (
+                  <p className="text-xs text-[#8a8178] mt-1">
+                    {lang === "en"
+                      ? "Separate pieces: "
+                      : lang === "cs"
+                        ? "Samostatné kusy: "
+                        : "Отдельными отрезами: "}
+                    {post.cuts!.filter((c) => c > 0).map((c) => `${c} м`).join(" · ")}
+                  </p>
+                )}
+              </div>
             )}
             {post.stock_meters === 0 && (
               <p className="text-sm text-red-500 mb-4">
@@ -251,8 +264,8 @@ export default function PostModal({ post, onClose }: PostModalProps) {
     {showAddModal && (
       <AddToCartModal
         post={post}
-        onAdd={(qty) => {
-          addItem(post, qty);
+        onAdd={(qty, cutIndex) => {
+          addItem(post, qty, cutIndex);
           setAddedToCart(true);
           setTimeout(() => setAddedToCart(false), 15_000);
         }}
