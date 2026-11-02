@@ -85,17 +85,22 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             {media.length > 0 ? (
               <>
                 {media[currentIndex].type === "video" ? (
+                  // preload="auto" so the clip is ready to play the moment it
+                  // is opened — only one video is mounted at a time.
                   <video
                     key={media[currentIndex].url}
                     src={media[currentIndex].url}
                     controls
+                    autoPlay
+                    playsInline
+                    preload="auto"
                     className="max-w-full max-h-full lg:max-h-[80vh] object-contain"
                   />
                 ) : (
                   <img
                     src={media[currentIndex].url}
                     alt={`${post.title} - ${currentIndex + 1}`}
-                    className="max-w-full max-h-full lg:max-h-[80vh] object-contain"
+                    className="w-full h-full object-cover"
                   />
                 )}
 

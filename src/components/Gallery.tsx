@@ -38,21 +38,6 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
         </div>
       )}
 
-      {/* Photo count badge */}
-      {post.images?.length > 1 && (
-        <div
-          className="absolute right-3 bg-black/60 text-white text-xs px-2 py-1 flex items-center gap-1 pointer-events-none"
-          style={{ top: post.is_discounted ? 96 : 12 }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="18" height="18" rx="0" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <path d="m21 15-5-5L5 21" />
-          </svg>
-          {post.images.length}
-        </div>
-      )}
-
       {/* New badge */}
       {post.is_new && (
         <div className="absolute top-3 left-3 bg-[#2c2825] text-white text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 font-medium pointer-events-none">
