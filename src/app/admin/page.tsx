@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Post } from "@/types";
 import { uploadFile } from "@/lib/upload-client";
 import { FABRIC_CATEGORIES } from "@/lib/categories";
+import { parseRub, priceForLang } from "@/lib/currency";
 
 interface AttachedPost {
   id: string;
@@ -122,6 +123,8 @@ export default function AdminPage() {
   const [isDiscounted, setIsDiscounted] = useState(false);
   const [oldPrice, setOldPrice] = useState("");
   const [price, setPrice] = useState("");
+  // Live preview of how the ruble price reads on the other site versions
+  const priceRub = parseRub(price);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [sku, setSku] = useState("");
@@ -1316,14 +1319,25 @@ $$ LANGUAGE sql;`}</pre>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-[#2c2825] mb-1.5">Цена</label>
-                  <input
-                    type="text"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="€150/м"
-                    className="w-full py-2.5 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
-                  />
+                  <label className="block text-sm text-[#2c2825] mb-1.5">
+                    Цена, ₽ за метр
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, ""))}
+                      placeholder="950"
+                      className="w-full py-2.5 pl-4 pr-9 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#8a8178] pointer-events-none">₽</span>
+                  </div>
+                  {priceRub != null && (
+                    <p className="text-xs text-[#8a8178] mt-1.5">
+                      EN: {priceForLang(String(priceRub), "en")} · CZ: {priceForLang(String(priceRub), "cs")}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm text-[#2c2825] mb-1.5">Артикул (SKU)</label>
@@ -1520,16 +1534,20 @@ $$ LANGUAGE sql;`}</pre>
               {isDiscounted && (
                 <div className="pl-14 -mt-2">
                   <label className="block text-sm text-[#2c2825] mb-1.5">
-                    Цена до скидки
+                    Цена до скидки, ₽ за метр
                     <span className="ml-2 text-xs text-[#8a8178]">будет зачёркнута рядом с новой ценой</span>
                   </label>
-                  <input
-                    type="text"
-                    value={oldPrice}
-                    onChange={(e) => setOldPrice(e.target.value)}
-                    placeholder="€200/м"
-                    className="w-full max-w-xs py-2.5 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
-                  />
+                  <div className="relative max-w-xs">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={oldPrice}
+                      onChange={(e) => setOldPrice(e.target.value.replace(/[^\d.,]/g, ""))}
+                      placeholder="1200"
+                      className="w-full py-2.5 pl-4 pr-9 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#8a8178] pointer-events-none">₽</span>
+                  </div>
                   <p className="text-xs text-[#8a8178] mt-1.5">
                     В поле «Цена» выше оставьте новую цену — по ней считается заказ.
                   </p>

@@ -5,6 +5,7 @@ import type { Post } from "@/types";
 import { useLang } from "@/context/LanguageContext";
 import { COUNTRIES, getCountryLabel, isValidPhone, isValidEmail } from "@/lib/countries";
 import { metersToFtHint } from "@/lib/units";
+import { priceForLang } from "@/lib/currency";
 
 interface BuyNowModalProps {
   post: Post;
@@ -274,7 +275,7 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-[#2c2825] truncate">{displayTitle}</p>
                   {post.sku && <p className="text-xs text-[#8a8178] mt-0.5">SKU: {post.sku}</p>}
-                  {post.price && <p className="text-sm font-heading text-[#2c2825] mt-0.5">{post.price}</p>}
+                  {post.price && <p className="text-sm font-heading text-[#2c2825] mt-0.5">{priceForLang(post.price, lang)}</p>}
                   {stockDisplay && (
                     <p className="text-xs text-[#8a8178] mt-0.5">{stockDisplay} {t.inStock}</p>
                   )}
@@ -315,7 +316,7 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
               {/* Item summary */}
               <div className="bg-[#f5f0eb] p-3 mb-5 text-sm">
                 <p className="font-medium text-[#2c2825]">{displayTitle}</p>
-                <p className="text-[#8a8178] text-xs mt-0.5">{qty} {t.metersUnit} · {post.price}</p>
+                <p className="text-[#8a8178] text-xs mt-0.5">{qty} {t.metersUnit} · {priceForLang(post.price, lang)}</p>
               </div>
 
               {/* Contact form */}

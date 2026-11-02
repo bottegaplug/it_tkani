@@ -7,29 +7,8 @@ import { useChat } from "@/context/ChatContext";
 import type { Lang } from "@/lib/i18n";
 import type { Post } from "@/types";
 import { COUNTRIES, getCountryLabel, isValidPhone, isValidEmail } from "@/lib/countries";
-import { getShippingEur, shippingZoneLabel, formatShippingCost } from "@/lib/shipping";
-import { EUR_TO_CZK } from "@/lib/currency";
-
-// Parse "€150/м", "5 000 ₽", "450 Kč" → { amount, symbol, currency }
-function parsePricePerMeter(raw: string): { amount: number; symbol: string; currency: string } | null {
-  if (!raw) return null;
-  const s = raw.replace(/\s/g, "");
-  let currency = "rub", symbol = "₽";
-  if (/€|eur/i.test(s)) { currency = "eur"; symbol = "€"; }
-  else if (/\$|usd/i.test(s)) { currency = "usd"; symbol = "$"; }
-  else if (/kč|czk/i.test(s)) { currency = "czk"; symbol = "Kč"; }
-  const match = s.match(/\d+(?:[.,]\d+)?/);
-  if (!match) return null;
-  const amount = parseFloat(match[0].replace(",", "."));
-  if (!amount || amount <= 0) return null;
-  return { amount, symbol, currency };
-}
-
-function formatMoney(amount: number, symbol: string, currency: string): string {
-  const rounded = Math.round(amount);
-  const n = rounded.toLocaleString("ru-RU"); // "1 500"
-  return currency === "eur" || currency === "usd" ? `${symbol}${rounded.toLocaleString("en-US")}` : `${n} ${symbol}`;
-}
+import { getShippingRub, shippingZoneLabel, formatShippingCost } from "@/lib/shipping";
+import { parseRub, totalForLang, priceForLang } from "@/lib/currency";
 
 function getTitle(post: Post, lang: Lang): string {
   if (lang !== "ru" && post.translations?.[lang]?.title) {
@@ -98,39 +77,34 @@ export default function CartDrawer() {
   const issueIds = new Set(stockIssues.map((s) => s.postId));
   const selectedCountry = COUNTRIES.find((c) => c.code === contact.countryCode);
 
-  // Compute per-item line totals and grand total
+  // Everything is summed in rubles — the single stored currency — and only
+  // converted to the language's currency at the moment of display.
   const priceInfo = useMemo(() => {
     const lines: (string | null)[] = [];
-    let total = 0;
-    let currency = "";
-    let symbol = "";
+    let totalRub = 0;
     let canSum = true;
 
     for (const item of items) {
-      const parsed = item.post.price ? parsePricePerMeter(item.post.price) : null;
-      if (!parsed) {
+      const rub = parseRub(item.post.price);
+      if (rub == null) {
         lines.push(null);
         canSum = false;
         continue;
       }
-      if (currency && parsed.currency !== currency) canSum = false;
-      currency = parsed.currency;
-      symbol = parsed.symbol;
-      const lineTotal = parsed.amount * item.quantity;
-      total += lineTotal;
-      lines.push(formatMoney(lineTotal, parsed.symbol, parsed.currency));
+      const lineRub = rub * item.quantity;
+      totalRub += lineRub;
+      lines.push(totalForLang(lineRub, lang));
     }
 
     return {
       lines,
-      total: canSum && currency ? formatMoney(total, symbol, currency) : null,
-      totalEur: canSum && currency === "eur" ? total : null,
-      currency,
+      total: canSum && totalRub > 0 ? totalForLang(totalRub, lang) : null,
+      totalRub: canSum && totalRub > 0 ? totalRub : null,
     };
-  }, [items]);
+  }, [items, lang]);
 
   // Shipping cost based on selected country
-  const shippingEur = contact.countryCode ? getShippingEur(contact.countryCode) : 0;
+  const shippingRub = contact.countryCode ? getShippingRub(contact.countryCode) : 0;
   const countryName = selectedCountry ? getCountryLabel(selectedCountry, lang) : "";
 
   const handleCountryChange = (code: string) => {
@@ -241,7 +215,7 @@ export default function CartDrawer() {
             lang,
             promoCode: promoCode || undefined,
             discountPercent: discountPercent || undefined,
-            shippingEur: shippingEur > 0 ? shippingEur : undefined,
+            shippingRub: shippingRub > 0 ? shippingRub : undefined,
           },
         }),
       });
@@ -408,7 +382,7 @@ export default function CartDrawer() {
                           )}
                           <p className="text-xs text-[#8a8178] mt-0.5">{item.quantity} {t.metersUnit}</p>
                           {item.post.price && (
-                            <p className="text-xs text-[#2c2825] mt-0.5">{item.post.price}</p>
+                            <p className="text-xs text-[#2c2825] mt-0.5">{priceForLang(item.post.price, lang)}</p>
                           )}
                           {hasIssue && (
                             <p className="text-xs text-red-500 mt-0.5">{t.stockIssueText}</p>
@@ -513,7 +487,10 @@ export default function CartDrawer() {
                     <div key={item.post.id} className="flex justify-between text-sm gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-[#2c2825] truncate">{title}</p>
-                        <p className="text-xs text-[#8a8178]">{item.quantity} {t.metersUnit}{item.post.price ? ` × ${item.post.price.replace(/\/.*/, "")}` : ""}</p>
+                        <p className="text-xs text-[#8a8178]">
+                          {item.quantity} {t.metersUnit}
+                          {item.post.price ? ` × ${priceForLang(item.post.price, lang).replace(/\/.*/, "")}` : ""}
+                        </p>
                       </div>
                       {lineTotal && (
                         <span className="text-[#2c2825] font-medium shrink-0">{lineTotal}</span>
@@ -523,11 +500,11 @@ export default function CartDrawer() {
                 })}
 
                 {/* Breakdown: subtotal / shipping / discount / total */}
-                {priceInfo.totalEur != null ? (
+                {priceInfo.totalRub != null ? (
                   <div className="pt-2 border-t border-[#e8e0d8] space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#8a8178]">{lang === "ru" ? "Подытог" : lang === "en" ? "Subtotal" : "Mezisoučet"}</span>
-                      <span className="text-[#2c2825]">€{priceInfo.totalEur.toLocaleString("en-US")}</span>
+                      <span className="text-[#2c2825]">{totalForLang(priceInfo.totalRub, lang)}</span>
                     </div>
                     {contact.countryCode && (
                       <div className="flex justify-between text-sm">
@@ -536,25 +513,23 @@ export default function CartDrawer() {
                           {" "}
                           <span className="text-[10px]">({shippingZoneLabel(contact.countryCode, lang)})</span>
                         </span>
-                        <span className="text-[#2c2825]">{formatShippingCost(shippingEur, lang)}</span>
+                        <span className="text-[#2c2825]">{formatShippingCost(shippingRub, lang)}</span>
                       </div>
                     )}
                     {promoValid && discountPercent > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-green-700">{promoCode} −{discountPercent}%</span>
-                        <span className="text-green-700">−€{(priceInfo.totalEur * discountPercent / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
+                        <span className="text-green-700">
+                          −{totalForLang(priceInfo.totalRub * discountPercent / 100, lang)}
+                        </span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm pt-1 border-t border-[#e8e0d8]">
                       <span className="font-heading font-semibold text-[#2c2825]">{lang === "ru" ? "Итого" : lang === "en" ? "Total" : "Celkem"}</span>
                       <span className="font-heading font-semibold text-[#2c2825]">
-                        €{(
-                          priceInfo.totalEur * (1 - discountPercent / 100) + (contact.countryCode ? shippingEur : 0)
-                        ).toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                        {lang === "cs" && (
-                          <span className="text-xs text-[#8a8178] ml-1">
-                            (≈ {Math.ceil((priceInfo.totalEur * (1 - discountPercent / 100) + (contact.countryCode ? shippingEur : 0)) * EUR_TO_CZK * 10) / 10} Kč)
-                          </span>
+                        {totalForLang(
+                          priceInfo.totalRub * (1 - discountPercent / 100) + (contact.countryCode ? shippingRub : 0),
+                          lang
                         )}
                       </span>
                     </div>

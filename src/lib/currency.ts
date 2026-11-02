@@ -1,42 +1,69 @@
-// ── Курс валют ─────────────────────────────────────────────
-// Меняй EUR_TO_CZK при необходимости
-export const EUR_TO_CZK = 25;
+// ══════════════════════════════════════════════════════════
+//  КУРСЫ ВАЛЮТ — меняй здесь, когда курс уйдёт
+//  Цены в админке задаются ТОЛЬКО в рублях за метр.
+//  Английская версия показывает евро, чешская — кроны.
+// ══════════════════════════════════════════════════════════
+
+/** Сколько рублей в одном евро */
+export const RUB_PER_EUR = 95;
+
+/** Сколько рублей в одной чешской кроне */
+export const RUB_PER_CZK = 4;
+
+export type Lang = "ru" | "en" | "cs";
+export type Currency = "rub" | "eur" | "czk";
+
+/** Какая валюта показывается на каждой версии сайта */
+export const CURRENCY_BY_LANG: Record<Lang, Currency> = {
+  ru: "rub",
+  en: "eur",
+  cs: "czk",
+};
 
 /**
- * Конвертирует строку цены в EUR → CZK для чешской версии.
- * "€150/м"  →  "3 750 Kč/м"
- * "€1 200"  →  "30 000 Kč"
+ * Достаёт число рублей из строки цены.
+ * "950 руб/м" → 950 · "3 690 ₽" → 3690 · "1200" → 1200
  */
-export function convertPriceToCzk(eurPrice: string): string {
-  if (!eurPrice) return eurPrice;
-  const s = eurPrice.replace(/\s/g, "");
-  if (!/€|eur/i.test(s)) return eurPrice; // не евро — не трогаем
+export function parseRub(price: string | number | null | undefined): number | null {
+  if (price == null) return null;
+  if (typeof price === "number") return isFinite(price) && price > 0 ? price : null;
+  const match = price.replace(/\s/g, "").match(/\d+(?:[.,]\d+)?/);
+  if (!match) return null;
+  const n = parseFloat(match[0].replace(",", "."));
+  return isNaN(n) || n <= 0 ? null : n;
+}
 
-  const match = s.match(/\d+(?:[.,]\d+)?/);
-  if (!match) return eurPrice;
+/** Переводит рубли в валюту языка. Округление вверх до целой единицы. */
+export function convertFromRub(rub: number, lang: Lang): number {
+  if (lang === "en") return Math.ceil(rub / RUB_PER_EUR);
+  if (lang === "cs") return Math.ceil(rub / RUB_PER_CZK);
+  return Math.round(rub);
+}
 
-  const eur = parseFloat(match[0].replace(",", "."));
-  if (isNaN(eur)) return eurPrice;
+/** Форматирует сумму в валюте языка: "950 ₽" · "€10" · "238 Kč" */
+export function formatAmount(amount: number, lang: Lang): string {
+  if (lang === "en") return `€${amount.toLocaleString("en-US")}`;
+  if (lang === "cs") return `${amount.toLocaleString("cs-CZ")} Kč`;
+  return `${amount.toLocaleString("ru-RU")} ₽`;
+}
 
-  const czk = Math.ceil(eur * EUR_TO_CZK * 10) / 10; // округление вверх до 0.1
-  const formatted = czk.toLocaleString("cs-CZ");      // "3 750" с пробелом
-
-  // Суффикс типа "/м", "/m" — оставляем
-  const suffix = eurPrice.replace(/^[^a-zа-яёA-ZА-ЯЁ€\d]*[\d.,\s]+[€a-zа-яёA-ZА-ЯЁ\s.]*/u, "")
-    .replace(/€|eur/gi, "").trim();
-
-  return `${formatted} Kč${suffix ? `/${suffix.replace(/^\//, "")}` : ""}`;
+/** Единица измерения метра на языке сайта */
+export function meterUnit(lang: Lang): string {
+  return lang === "ru" ? "м" : "m";
 }
 
 /**
- * Парсит числовое значение EUR из строки цены.
- * Нужно для расчёта итогов.
+ * Главная функция показа цены товара.
+ * Цена из базы (всегда рубли) → строка в валюте языка, за метр.
+ * "950 руб/м" + "en" → "€10/m"
  */
-export function parseEurAmount(price: string): number | null {
-  if (!price) return null;
-  const s = price.replace(/\s/g, "");
-  const match = s.match(/\d+(?:[.,]\d+)?/);
-  if (!match) return null;
-  const n = parseFloat(match[0].replace(",", "."));
-  return isNaN(n) ? null : n;
+export function priceForLang(price: string | number | null | undefined, lang: Lang): string {
+  const rub = parseRub(price);
+  if (rub == null) return typeof price === "string" ? price : "";
+  return `${formatAmount(convertFromRub(rub, lang), lang)}/${meterUnit(lang)}`;
+}
+
+/** То же, но без суффикса «/м» — для итогов и строк заказа */
+export function totalForLang(rub: number, lang: Lang): string {
+  return formatAmount(convertFromRub(rub, lang), lang);
 }

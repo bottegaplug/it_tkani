@@ -1,12 +1,14 @@
-import { EUR_TO_CZK } from "./currency";
+import { totalForLang, type Lang } from "./currency";
 
 // ══════════════════════════════════════════════════════════
 //  НАСТРОЙКИ ДОСТАВКИ — меняй здесь
+//  Суммы, как и цены товаров, задаются в рублях.
+//  На сайте пересчитываются в валюту языка автоматически.
 // ══════════════════════════════════════════════════════════
 
-export const SHIPPING_RATES_EUR = {
-  eu: 10,    // доставка по ЕС, €
-  world: 25, // доставка вне ЕС, €
+export const SHIPPING_RATES_RUB = {
+  eu: 950,     // доставка по ЕС (≈ €10)
+  world: 2375, // доставка вне ЕС (≈ €25)
 };
 
 // Страны Европейского союза (коды ISO 3166-1 alpha-2)
@@ -16,12 +18,12 @@ export const EU_COUNTRY_CODES = new Set([
   "NL", "PL", "PT", "RO", "SE", "SI", "SK",
 ]);
 
-/** Стоимость доставки в EUR для данной страны (код ISO). */
-export function getShippingEur(countryCode: string): number {
+/** Стоимость доставки в рублях для данной страны (код ISO). */
+export function getShippingRub(countryCode: string): number {
   if (!countryCode) return 0;
   return EU_COUNTRY_CODES.has(countryCode)
-    ? SHIPPING_RATES_EUR.eu
-    : SHIPPING_RATES_EUR.world;
+    ? SHIPPING_RATES_RUB.eu
+    : SHIPPING_RATES_RUB.world;
 }
 
 /** Метка зоны доставки */
@@ -32,16 +34,12 @@ export function shippingZoneLabel(countryCode: string, lang: string): string {
   return isEu ? "EU shipping" : "International shipping";
 }
 
-/** Форматирует стоимость доставки для отображения */
-export function formatShippingCost(eur: number, lang: string): string {
-  if (eur === 0) {
+/** Форматирует стоимость доставки в валюте языка */
+export function formatShippingCost(rub: number, lang: Lang): string {
+  if (rub === 0) {
     if (lang === "ru") return "Бесплатно";
     if (lang === "cs") return "Zdarma";
     return "Free";
   }
-  if (lang === "cs") {
-    const czk = Math.ceil(eur * EUR_TO_CZK * 10) / 10;
-    return `${czk.toLocaleString("cs-CZ")} Kč`;
-  }
-  return `€${eur}`;
+  return totalForLang(rub, lang);
 }

@@ -3,7 +3,7 @@
 import type { Post } from "@/types";
 import { useLang } from "@/context/LanguageContext";
 import type { Lang } from "@/lib/i18n";
-import { convertPriceToCzk } from "@/lib/currency";
+import { priceForLang } from "@/lib/currency";
 
 function getTitle(post: Post, lang: Lang): string {
   if (lang !== "ru" && post.translations?.[lang]?.title) {
@@ -74,11 +74,11 @@ function GalleryCard({ post, onPostClick }: GalleryCardProps) {
           <p className="text-xs mt-0.5 flex items-center gap-1.5">
             {post.is_discounted && post.old_price && (
               <span className="text-[#e8a0a6] line-through">
-                {lang === "cs" ? convertPriceToCzk(post.old_price) : post.old_price}
+                {priceForLang(post.old_price, lang)}
               </span>
             )}
             <span className="text-white/80">
-              {lang === "cs" ? convertPriceToCzk(post.price) : post.price}
+              {priceForLang(post.price, lang)}
             </span>
           </p>
         )}

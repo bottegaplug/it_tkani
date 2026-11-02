@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseRub, convertFromRub, CURRENCY_BY_LANG, type Lang, type Currency } from "@/lib/currency";
 
 interface CartItemPayload {
   postId: string;
@@ -21,36 +22,22 @@ interface CustomerPayload {
   lang?: string;
   promoCode?: string;
   discountPercent?: number;
-  shippingEur?: number;
+  shippingRub?: number;
 }
 
-// Parse price string → { amountCents, currency }
-// Handles: "5000 руб/м", "€120", "3 500 ₽", "450 Kč"
-function parsePrice(raw: string): { amountCents: number; currency: string } | null {
-  if (!raw) return null;
-  const s = raw.replace(/\s/g, "");
-
-  let currency = "rub";
-  if (/€|eur/i.test(s)) currency = "eur";
-  else if (/\$|usd/i.test(s)) currency = "usd";
-  else if (/kč|czk/i.test(s)) currency = "czk";
-  else if (/руб|₽|rub/i.test(s)) currency = "rub";
-
-  const match = s.match(/[\d]+(?:[.,]\d+)?/);
-  if (!match) return null;
-  const amount = parseFloat(match[0].replace(",", "."));
-  if (isNaN(amount) || amount <= 0) return null;
-
-  return { amountCents: Math.round(amount * 100), currency };
+// Prices are stored in rubles; the customer is charged in the currency of the
+// site version they were looking at, so the amount matches what they saw.
+function chargeCurrency(lang?: string): Currency {
+  return CURRENCY_BY_LANG[(lang as Lang) ?? "ru"] ?? "rub";
 }
 
-// Stripe max amounts per currency (in minor units)
-const STRIPE_MAX: Record<string, number> = {
-  rub: 999_999_99,
-  eur: 999_999_99,
-  usd: 999_999_99,
-  czk: 999_999_99,
-};
+/** Rubles → minor units (cents/haléře/копейки) of the charge currency */
+function rubToMinorUnits(rub: number, lang?: string): number {
+  return Math.round(convertFromRub(rub, (lang as Lang) ?? "ru") * 100);
+}
+
+// Stripe's per-amount ceiling, in minor units
+const STRIPE_MAX_MINOR = 999_999_99;
 
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -92,77 +79,50 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_SITE_URL ||
       (req.headers.get("origin") ?? "http://localhost:3000");
 
-    // Build line items — all items must use same currency
-    // Detect currency from first item with a price
-    let currency = "eur";
+    // Every amount is summed in rubles, then converted once to the currency
+    // the customer was shown — so the charge matches the displayed price.
+    const currency = chargeCurrency(customer.lang);
+    const discountMult = customer.discountPercent
+      ? 1 - customer.discountPercent / 100
+      : 1;
+
     const lineItems = [];
 
     for (const item of items) {
       const qty = Math.min(Math.max(item.quantity || 1, 0.1), 500);
+      const perMeterRub = parseRub(item.price);
+      const lineRub = perMeterRub != null ? perMeterRub * qty * discountMult : 0;
+      const unitAmount = perMeterRub != null ? rubToMinorUnits(lineRub, customer.lang) : 100;
 
-      if (item.price) {
-        const parsed = parsePrice(item.price);
-        if (parsed) {
-          currency = parsed.currency;
-          const totalCents = Math.round(parsed.amountCents * qty);
-          const max = STRIPE_MAX[currency] ?? 999_999_99;
-          if (totalCents > max) {
-            return NextResponse.json(
-              { error: "amount_too_large" },
-              { status: 400 }
-            );
-          }
-          lineItems.push({
-            price_data: {
-              currency,
-              product_data: {
-                name: item.sku ? `[${item.sku}] ${item.title}` : item.title,
-                ...(item.imageUrl ? { images: [item.imageUrl] } : {}),
-              },
-              unit_amount: totalCents,
-            },
-            quantity: 1,
-          });
-          continue;
-        }
+      if (unitAmount > STRIPE_MAX_MINOR) {
+        return NextResponse.json({ error: "amount_too_large" }, { status: 400 });
       }
 
-      // No parseable price — use 1 EUR placeholder
       lineItems.push({
         price_data: {
-          currency: "eur",
+          currency,
           product_data: {
             name: item.sku ? `[${item.sku}] ${item.title}` : item.title,
             ...(item.imageUrl ? { images: [item.imageUrl] } : {}),
           },
-          unit_amount: 100, // 1 EUR placeholder
+          unit_amount: unitAmount,
         },
         quantity: 1,
       });
     }
 
-    // Apply discount to line items
-    const discountMult = customer.discountPercent
-      ? 1 - customer.discountPercent / 100
-      : 1;
-    const discountedLineItems = lineItems.map((li) => ({
-      ...li,
-      price_data: {
-        ...li.price_data,
-        unit_amount: Math.round(li.price_data.unit_amount * discountMult),
-      },
-    }));
+    const discountedLineItems = lineItems;
 
     // Add shipping as a line item
-    if (customer.shippingEur && customer.shippingEur > 0) {
+    if (customer.shippingRub && customer.shippingRub > 0) {
       const shippingLabel =
         customer.lang === "ru" ? "Доставка" :
         customer.lang === "cs" ? "Doprava" : "Shipping";
       discountedLineItems.push({
         price_data: {
-          currency: "eur",
+          currency,
           product_data: { name: shippingLabel },
-          unit_amount: Math.round(customer.shippingEur * 100),
+          unit_amount: rubToMinorUnits(customer.shippingRub, customer.lang),
         },
         quantity: 1,
       });

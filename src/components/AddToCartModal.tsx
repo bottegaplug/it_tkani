@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { Post } from "@/types";
 import { useLang } from "@/context/LanguageContext";
 import { metersToFtHint } from "@/lib/units";
+import { priceForLang } from "@/lib/currency";
 
 interface AddToCartModalProps {
   post: Post;
@@ -97,7 +98,7 @@ export default function AddToCartModal({ post, onAdd, onClose }: AddToCartModalP
                 <p className="text-xs text-[#8a8178] mt-0.5">SKU: {post.sku}</p>
               )}
               {post.price && (
-                <p className="text-sm font-heading text-[#2c2825] mt-0.5">{post.price}</p>
+                <p className="text-sm font-heading text-[#2c2825] mt-0.5">{priceForLang(post.price, lang)}</p>
               )}
               {stockDisplay && (
                 <p className="text-xs text-[#8a8178] mt-0.5">{stockDisplay} {t.inStock}</p>
