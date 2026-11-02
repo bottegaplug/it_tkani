@@ -80,9 +80,8 @@ export default function PostModal({ post, onClose }: PostModalProps) {
             </svg>
           </button>
 
-          {/* Media carousel — the panel hugs the media instead of forcing a
-              fixed box, so nothing is cropped and no empty bars are left. */}
-          <div className="relative w-full lg:w-[60%] lg:self-start bg-[#1a1a1a] flex items-center justify-center shrink-0">
+          {/* Media carousel */}
+          <div className="relative w-full lg:w-[60%] bg-[#1a1a1a] flex items-center justify-center aspect-square lg:aspect-auto lg:min-h-[500px] shrink-0">
             {media.length > 0 ? (
               <>
                 {media[currentIndex].type === "video" ? (
@@ -95,13 +94,13 @@ export default function PostModal({ post, onClose }: PostModalProps) {
                     autoPlay
                     playsInline
                     preload="auto"
-                    className="w-full h-auto max-h-[85vh] object-contain"
+                    className="max-w-full max-h-full lg:max-h-[80vh] object-contain"
                   />
                 ) : (
                   <img
                     src={media[currentIndex].url}
                     alt={`${post.title} - ${currentIndex + 1}`}
-                    className="w-full h-auto max-h-[85vh] object-contain"
+                    className="max-w-full max-h-full lg:max-h-[80vh] object-contain"
                   />
                 )}
 
@@ -130,7 +129,7 @@ export default function PostModal({ post, onClose }: PostModalProps) {
                 )}
               </>
             ) : (
-              <span className="text-white/50 font-heading text-xl py-32">{t.noPhoto}</span>
+              <span className="text-white/50 font-heading text-xl">{t.noPhoto}</span>
             )}
           </div>
 
