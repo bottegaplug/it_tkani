@@ -176,6 +176,7 @@ export default function AdminPage() {
   const filterRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState("");
   const [translations, setTranslations] = useState<{
     en?: { title: string; description: string };
     cs?: { title: string; description: string };
@@ -461,16 +462,22 @@ export default function AdminPage() {
   const handleTranslate = async () => {
     if (!title.trim() && !description.trim()) return;
     setTranslating(true);
+    setTranslateError("");
     try {
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setTranslations(data);
+      const data = await res.json();
+      if (!res.ok) {
+        // Поля не трогаем — иначе туда попадёт текст ошибки
+        setTranslateError(data.error || "Не удалось перевести");
+        return;
       }
+      setTranslations(data);
+    } catch {
+      setTranslateError("Ошибка соединения");
     } finally {
       setTranslating(false);
     }
@@ -1481,6 +1488,15 @@ $$ LANGUAGE sql;`}</pre>
                     )}
                   </button>
                 </div>
+
+                {translateError && (
+                  <div className="p-3 bg-red-50 border border-red-200">
+                    <p className="text-sm text-red-700">{translateError}</p>
+                    <p className="text-xs text-red-600/80 mt-1">
+                      Поля переводов оставлены как были — впишите вручную или повторите позже.
+                    </p>
+                  </div>
+                )}
 
                 {/* EN */}
                 <div className="space-y-2">
