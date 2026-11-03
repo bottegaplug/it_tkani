@@ -177,6 +177,7 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState("");
+  const [translateEngine, setTranslateEngine] = useState("");
   const [translations, setTranslations] = useState<{
     en?: { title: string; description: string };
     cs?: { title: string; description: string };
@@ -475,7 +476,9 @@ export default function AdminPage() {
         setTranslateError(data.error || "Не удалось перевести");
         return;
       }
-      setTranslations(data);
+      // Берём только переводы — в ответе есть ещё служебное поле engine
+      setTranslations({ en: data.en, cs: data.cs });
+      setTranslateEngine(data.engine || "");
     } catch {
       setTranslateError("Ошибка соединения");
     } finally {
@@ -1466,7 +1469,12 @@ $$ LANGUAGE sql;`}</pre>
               {/* Auto-translate */}
               <div className="border border-[#e8e0d8] p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-[#2c2825]">Переводы (EN / CZ)</span>
+                  <span className="text-sm font-medium text-[#2c2825]">
+                    Переводы (EN / CZ)
+                    {translateEngine && (
+                      <span className="ml-2 text-xs text-[#8a8178] font-normal">через {translateEngine}</span>
+                    )}
+                  </span>
                   <button
                     type="button"
                     onClick={handleTranslate}
