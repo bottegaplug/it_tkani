@@ -680,7 +680,8 @@ export default function AdminPage() {
               tab === "posts" ? "Товары" :
               tab === "orders" ? `Заказы${orders.length ? ` (${orders.length})` : ""}` :
               tab === "promo" ? `Промокоды${promos.length ? ` (${promos.length})` : ""}` :
-              `Чаты${totalUnread ? ` (${totalUnread})` : ""}`;
+              tab === "chats" ? `Чаты${totalUnread ? ` (${totalUnread})` : ""}` :
+              "Сверка";
             return (
               <button
                 key={tab}
