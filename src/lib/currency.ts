@@ -49,19 +49,21 @@ function ceilToTenth(n: number): number {
   return Math.ceil(n * 10) / 10;
 }
 
-/** Переводит рубли в валюту языка, округляя вверх до десятых */
+/**
+ * Переводит рубли в валюту языка, всегда округляя вверх.
+ * Евро — до десятых, кроны и рубли — до целых: дробных крон в ценниках не бывает.
+ */
 export function convertFromRub(rub: number, lang: Lang, rates: Rates = FALLBACK_RATES): number {
   if (lang === "en") return ceilToTenth(rub / rates.rubPerEur);
-  if (lang === "cs") return ceilToTenth(rub / rates.rubPerCzk);
-  return ceilToTenth(rub);
+  if (lang === "cs") return Math.ceil(rub / rates.rubPerCzk);
+  return Math.ceil(rub);
 }
 
-/** Форматирует сумму: "950 ₽" · "€38,9" · "923,5 Kč" */
+/** Форматирует сумму: "950 ₽" · "€38,9" · "995 Kč" */
 export function formatAmount(amount: number, lang: Lang): string {
-  const opts = { maximumFractionDigits: 1 } as const;
-  if (lang === "en") return `€${amount.toLocaleString("en-US", opts)}`;
-  if (lang === "cs") return `${amount.toLocaleString("cs-CZ", opts)} Kč`;
-  return `${amount.toLocaleString("ru-RU", opts)} ₽`;
+  if (lang === "en") return `€${amount.toLocaleString("en-US", { maximumFractionDigits: 1 })}`;
+  if (lang === "cs") return `${amount.toLocaleString("cs-CZ", { maximumFractionDigits: 0 })} Kč`;
+  return `${amount.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`;
 }
 
 /** Единица измерения метра на языке сайта */
