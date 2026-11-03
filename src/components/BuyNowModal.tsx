@@ -51,6 +51,12 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
   const [step, setStep] = useState<"qty" | "contact">("qty");
   const [qty, setQty] = useState("");
   const [qtyError, setQtyError] = useState("");
+
+  // Несколько отрезов — покупатель выбирает один, метраж ограничен им
+  const cuts = post.cuts?.filter((c) => c > 0) ?? [];
+  const hasCuts = cuts.length > 0;
+  const [cutIndex, setCutIndex] = useState(0);
+  const maxMeters = hasCuts ? cuts[cutIndex] : post.stock_meters ?? null;
   const [contact, setContact] = useState<ContactForm>({
     name: "",
     phone: "",
@@ -101,7 +107,8 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
 
   const buildMessage = () => {
     const skuPart = post.sku ? `[${post.sku}] ` : "";
-    let msg = `Добрый день! Я хочу заказать:\n• ${skuPart}${displayTitle} — ${qty}м — ${post.price || ""}`;
+    const cutPart = hasCuts && cuts.length > 1 ? ` (отрез ${cutIndex + 1}, ${cuts[cutIndex]}м)` : "";
+    let msg = `Добрый день! Я хочу заказать:\n• ${skuPart}${displayTitle} — ${qty}м${cutPart} — ${post.price || ""}`;
     if (contact.name) msg += `\n\nИмя: ${contact.name}`;
     if (contact.phone) msg += `\nТелефон: ${contact.phone}`;
     if (contact.email) msg += `\nEmail: ${contact.email}`;
@@ -118,8 +125,8 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
       setQtyError(t.enterPositiveNumber);
       return;
     }
-    if (post.stock_meters != null && num > post.stock_meters) {
-      setQtyError(`${t.maxAvailable}: ${post.stock_meters} ${t.metersUnit}`);
+    if (maxMeters != null && num > maxMeters) {
+      setQtyError(`${t.maxAvailable}: ${maxMeters} ${t.metersUnit}`);
       return;
     }
     setQtyError("");
@@ -162,6 +169,7 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
               title: displayTitle,
               quantity: parseQty(qty),
               price: post.price || "",
+              cutIndex: hasCuts ? cutIndex : undefined,
               imageUrl: post.images?.[0] ?? null,
             },
           ],
@@ -282,7 +290,38 @@ export default function BuyNowModal({ post, onClose }: BuyNowModalProps) {
               </div>
 
               <form onSubmit={handleQtySubmit}>
-                <label className="block text-sm text-[#2c2825] mb-1.5">{t.quantityMeters}</label>
+                {hasCuts && cuts.length > 1 && (
+                  <div className="mb-4">
+                    <label className="block text-sm text-[#2c2825] mb-1.5">
+                      {lang === "ru" ? "Выберите отрез" : lang === "cs" ? "Vyberte kus" : "Choose a piece"}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {cuts.map((c, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { setCutIndex(i); setQty(""); setQtyError(""); }}
+                          className={`px-3 py-2 text-sm border transition-colors ${
+                            i === cutIndex
+                              ? "bg-[#2c2825] text-white border-[#2c2825]"
+                              : "bg-white text-[#2c2825] border-[#e8e0d8] hover:bg-[#f5f0eb]"
+                          }`}
+                        >
+                          {lang === "ru" ? "Отрез" : lang === "cs" ? "Kus" : "Piece"} {i + 1} · {c} {t.metersUnit}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <label className="block text-sm text-[#2c2825] mb-1.5">
+                  {t.quantityMeters}
+                  {maxMeters != null && (
+                    <span className="ml-2 text-xs text-[#8a8178]">
+                      {lang === "ru" ? "до" : lang === "cs" ? "až" : "up to"} {maxMeters} {t.metersUnit}
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   inputMode="decimal"
