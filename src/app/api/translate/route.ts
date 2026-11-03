@@ -47,6 +47,8 @@ async function deeplPair(pair: Pair, target: "EN-GB" | "CS"): Promise<Pair> {
   if (res.status === 403) throw new TranslateError("DeepL отклонил ключ — проверьте DEEPL_API_KEY");
   if (res.status === 456) throw new TranslateError("Исчерпан месячный лимит DeepL");
   if (res.status === 429) throw new TranslateError("Слишком много запросов к DeepL, подождите минуту");
+  // 451 — DeepL не обслуживает страну, из которой идёт запрос
+  if (res.status === 451) throw new TranslateError("DeepL недоступен из страны сервера");
   if (!res.ok) throw new TranslateError(`DeepL вернул ошибку ${res.status}`);
 
   const data = await res.json().catch(() => null);
@@ -123,8 +125,15 @@ export async function POST(req: NextRequest) {
 
   try {
     if (DEEPL_KEY) {
-      const [en, cs] = await Promise.all([deeplPair(pair, "EN-GB"), deeplPair(pair, "CS")]);
-      return NextResponse.json({ en, cs, engine: "DeepL" });
+      try {
+        const [en, cs] = await Promise.all([deeplPair(pair, "EN-GB"), deeplPair(pair, "CS")]);
+        return NextResponse.json({ en, cs, engine: "DeepL" });
+      } catch (err) {
+        // DeepL недоступен (например, блокирует страну сервера) — не сдаёмся,
+        // а доводим перевод запасным сервисом
+        console.error("translate: DeepL недоступен, перехожу на MyMemory —",
+          err instanceof Error ? err.message : err);
+      }
     }
 
     // Запасной путь — последовательно, чтобы не упереться в ограничение по частоте
