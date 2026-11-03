@@ -83,6 +83,16 @@ const CARRIERS = ["СДЭК", "Почта России", "DHL", "EMS", "FedEx", 
 
 type PostFilter = "active" | "archived" | "all";
 
+interface SyncRow {
+  sku: string;
+  title: string;
+  tgCuts: number[];
+  siteCuts: number[];
+  reserved: boolean;
+  postUrl: string | null;
+  status: "ok" | "diff" | "reserved" | "not_found";
+}
+
 const POST_FILTERS: { key: PostFilter; label: string; hint: string }[] = [
   { key: "active", label: "Активные", hint: "видны на сайте" },
   { key: "archived", label: "Архивированные", hint: "скрыты с сайта" },
@@ -93,7 +103,7 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
-  const [adminTab, setAdminTab] = useState<"posts" | "orders" | "promo" | "chats">("posts");
+  const [adminTab, setAdminTab] = useState<"posts" | "orders" | "promo" | "chats" | "sync">("posts");
   const [posts, setPosts] = useState<Post[]>([]);
   const [editing, setEditing] = useState<Post | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -149,6 +159,12 @@ export default function AdminPage() {
     : null;
   const [adminSearch, setAdminSearch] = useState("");
   const [postFilter, setPostFilter] = useState<PostFilter>("active");
+
+  // Сверка с Telegram
+  const [syncRows, setSyncRows] = useState<SyncRow[] | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError, setSyncError] = useState("");
+  const [syncAt, setSyncAt] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
@@ -543,6 +559,23 @@ export default function AdminPage() {
     setSaving(false);
   };
 
+  /** Сверяет метражи на сайте с последними постами канала */
+  const runSync = async () => {
+    setSyncLoading(true);
+    setSyncError("");
+    try {
+      const res = await fetch("/api/sync-telegram");
+      const data = await res.json();
+      if (!res.ok) { setSyncError(data.error || "Ошибка"); return; }
+      setSyncRows(data.rows);
+      setSyncAt(new Date(data.checkedAt).toLocaleString("ru-RU"));
+    } catch {
+      setSyncError("Ошибка соединения");
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   /** Скрыть товар с сайта или вернуть обратно — запись при этом сохраняется */
   const toggleArchive = async (post: Post) => {
     const next = !post.is_archived;
@@ -641,7 +674,7 @@ export default function AdminPage() {
       {/* Tab switcher */}
       <div className="border-b border-[#e8e0d8] bg-white">
         <div className="max-w-6xl mx-auto px-4 lg:px-8 flex gap-1 pt-2">
-          {(["posts", "orders", "promo", "chats"] as const).map((tab) => {
+          {(["posts", "orders", "promo", "chats", "sync"] as const).map((tab) => {
             const totalUnread = chatUsers.reduce((s, u) => s + u.unread_count, 0);
             const label =
               tab === "posts" ? "Товары" :
@@ -876,6 +909,109 @@ ALTER TABLE orders DISABLE ROW LEVEL SECURITY;`}</pre>
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* ── СВЕРКА С TELEGRAM ── */}
+        {adminTab === "sync" && (
+          <div className="space-y-5">
+            <div className="bg-white border border-[#e8e0d8] p-6">
+              <h2 className="font-heading text-xl font-semibold text-[#2c2825] mb-2">
+                Сверка метражей с Telegram
+              </h2>
+              <p className="text-sm text-[#8a8178] leading-relaxed mb-4">
+                Берёт артикулы активных товаров и ищет каждый в канале
+                <a href="https://t.me/it_tkani" target="_blank" rel="noopener noreferrer"
+                   className="text-[#2c2825] underline underline-offset-2 mx-1">@it_tkani</a>
+                — по самому свежему посту. Сравнивает метражи и показывает, что разошлось.
+                Ничего не меняет: правки вы вносите сами.
+              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={runSync}
+                  disabled={syncLoading}
+                  className="px-6 py-2.5 bg-[#2c2825] text-white text-sm font-heading tracking-wide hover:bg-[#3d3632] transition-colors disabled:opacity-50"
+                >
+                  {syncLoading ? "Читаю канал..." : "Сверить"}
+                </button>
+                {syncAt && <span className="text-xs text-[#b8b0a8]">Проверено: {syncAt}</span>}
+              </div>
+              {syncError && <p className="text-sm text-red-500 mt-3">{syncError}</p>}
+              {syncLoading && (
+                <p className="text-xs text-[#b8b0a8] mt-3">
+                  Листаю историю канала — это занимает до полуминуты
+                </p>
+              )}
+            </div>
+
+            {syncRows && (() => {
+              const order = { reserved: 0, diff: 1, not_found: 2, ok: 3 } as const;
+              const sorted = [...syncRows].sort((a, b) => order[a.status] - order[b.status]);
+              const counts = {
+                reserved: syncRows.filter((r) => r.status === "reserved").length,
+                diff: syncRows.filter((r) => r.status === "diff").length,
+                not_found: syncRows.filter((r) => r.status === "not_found").length,
+                ok: syncRows.filter((r) => r.status === "ok").length,
+              };
+              const fmt = (c: number[]) => (c.length ? c.map((x) => `${x} м`).join(" · ") : "—");
+
+              return (
+                <div className="bg-white border border-[#e8e0d8]">
+                  <div className="flex flex-wrap gap-4 px-5 py-3 border-b border-[#e8e0d8] text-xs">
+                    <span className="text-[#a8555c] font-medium">Продано: {counts.reserved}</span>
+                    <span className="text-amber-700 font-medium">Расходится: {counts.diff}</span>
+                    <span className="text-[#8a8178]">Не найдено: {counts.not_found}</span>
+                    <span className="text-emerald-700">Совпадает: {counts.ok}</span>
+                  </div>
+
+                  <div className="divide-y divide-[#f0ebe5]">
+                    {sorted.map((r) => {
+                      const tone =
+                        r.status === "reserved" ? "bg-[#a8555c]/5"
+                        : r.status === "diff" ? "bg-amber-50"
+                        : r.status === "not_found" ? "bg-[#faf9f7]"
+                        : "";
+                      const label =
+                        r.status === "reserved" ? "БРОНЬ — убрать с сайта"
+                        : r.status === "diff" ? "Метраж изменился"
+                        : r.status === "not_found" ? "Поста не нашлось"
+                        : "Совпадает";
+                      const labelTone =
+                        r.status === "reserved" ? "bg-[#a8555c] text-white"
+                        : r.status === "diff" ? "bg-amber-500 text-white"
+                        : r.status === "not_found" ? "bg-[#d8d0c8] text-[#2c2825]"
+                        : "bg-emerald-600 text-white";
+
+                      return (
+                        <div key={r.sku} className={`px-5 py-3 flex items-center gap-4 flex-wrap ${tone}`}>
+                          <span className="font-mono text-sm font-semibold text-[#2c2825] w-24 shrink-0">{r.sku}</span>
+
+                          <div className="flex-1 min-w-[180px]">
+                            <p className="text-sm text-[#2c2825] truncate">{r.title}</p>
+                            <p className="text-xs text-[#8a8178] mt-0.5">
+                              Telegram: <strong className="text-[#2c2825]">{fmt(r.tgCuts)}</strong>
+                              <span className="mx-2 text-[#d8d0c8]">→</span>
+                              Сайт: <strong className="text-[#2c2825]">{fmt(r.siteCuts)}</strong>
+                            </p>
+                          </div>
+
+                          <span className={`text-[10px] px-2 py-1 uppercase tracking-wider shrink-0 ${labelTone}`}>
+                            {label}
+                          </span>
+
+                          {r.postUrl && (
+                            <a href={r.postUrl} target="_blank" rel="noopener noreferrer"
+                               className="text-xs text-[#8a8178] hover:text-[#2c2825] underline underline-offset-2 shrink-0">
+                              пост
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
