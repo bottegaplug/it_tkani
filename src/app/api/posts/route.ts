@@ -23,9 +23,11 @@ export async function GET(req: NextRequest) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    // Public catalog: always hide sold-out items (stock_meters = 0)
+    // Public catalog: hide sold-out items (stock_meters = 0) and archived ones
     if (!isAdminRequest) {
-      query = query.or("stock_meters.is.null,stock_meters.gt.0");
+      query = query
+        .or("stock_meters.is.null,stock_meters.gt.0")
+        .or("is_archived.is.null,is_archived.eq.false");
     }
 
     const { data, error } = await query;
@@ -37,7 +39,9 @@ export async function GET(req: NextRequest) {
 
   let posts = readPosts();
   if (!isAdminRequest) {
-    posts = posts.filter((p) => p.stock_meters == null || p.stock_meters > 0);
+    posts = posts.filter(
+      (p) => (p.stock_meters == null || p.stock_meters > 0) && !p.is_archived
+    );
   }
   return NextResponse.json(posts);
 }
@@ -68,6 +72,7 @@ export async function POST(req: NextRequest) {
         sku: body.sku || null,
         stock_meters: body.stock_meters != null ? body.stock_meters : null,
         cuts: body.cuts ?? null,
+        is_archived: body.is_archived ?? false,
       })
       .select()
       .single();
@@ -91,6 +96,7 @@ export async function POST(req: NextRequest) {
     sku: body.sku || null,
     stock_meters: body.stock_meters != null ? body.stock_meters : null,
     cuts: body.cuts ?? null,
+    is_archived: body.is_archived ?? false,
   });
   return NextResponse.json(post);
 }
@@ -121,6 +127,7 @@ export async function PUT(req: NextRequest) {
         sku: body.sku || null,
         stock_meters: body.stock_meters != null ? body.stock_meters : null,
         cuts: body.cuts ?? null,
+        is_archived: body.is_archived ?? false,
       })
       .eq("id", body.id)
       .select()
@@ -145,6 +152,7 @@ export async function PUT(req: NextRequest) {
     sku: body.sku || null,
     stock_meters: body.stock_meters != null ? body.stock_meters : null,
     cuts: body.cuts ?? null,
+    is_archived: body.is_archived ?? false,
   });
   if (!updated) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

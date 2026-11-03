@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Post } from "@/types";
 import { uploadFile } from "@/lib/upload-client";
 import { FABRIC_CATEGORIES } from "@/lib/categories";
@@ -81,6 +81,14 @@ interface Order {
 
 const CARRIERS = ["СДЭК", "Почта России", "DHL", "EMS", "FedEx", "Boxberry", "Другое"];
 
+type PostFilter = "active" | "archived" | "all";
+
+const POST_FILTERS: { key: PostFilter; label: string; hint: string }[] = [
+  { key: "active", label: "Активные", hint: "видны на сайте" },
+  { key: "archived", label: "Архивированные", hint: "скрыты с сайта" },
+  { key: "all", label: "Все", hint: "активные и архивированные" },
+];
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
@@ -140,6 +148,9 @@ export default function AdminPage() {
     ? Math.round(parsedCuts.reduce((a, b) => a + b, 0) * 100) / 100
     : null;
   const [adminSearch, setAdminSearch] = useState("");
+  const [postFilter, setPostFilter] = useState<PostFilter>("active");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [translations, setTranslations] = useState<{
@@ -326,6 +337,18 @@ export default function AdminPage() {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Close the visibility dropdown when clicking anywhere outside it
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [filterOpen]);
 
   useEffect(() => {
     if (authenticated) {
@@ -518,6 +541,23 @@ export default function AdminPage() {
       fetchPosts();
     }
     setSaving(false);
+  };
+
+  /** Скрыть товар с сайта или вернуть обратно — запись при этом сохраняется */
+  const toggleArchive = async (post: Post) => {
+    const next = !post.is_archived;
+    // Обновляем на месте, не дожидаясь ответа — список не мигает
+    setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, is_archived: next } : p)));
+    const res = await fetch("/api/posts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...post, is_archived: next }),
+    });
+    if (!res.ok) {
+      // Не сохранилось — откатываем
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, is_archived: !next } : p)));
+      alert("Не удалось изменить видимость товара");
+    }
   };
 
   const deletePost = async (id: string) => {
@@ -1641,9 +1681,10 @@ $$ LANGUAGE sql;`}</pre>
 
         {/* Posts list */}
         <div className="space-y-3">
-          {/* Search bar */}
+          {/* Search + visibility filter */}
           {posts.length > 0 && (
-            <div className="relative mb-2">
+            <div className="flex gap-2 mb-2">
+            <div className="relative flex-1">
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8178] pointer-events-none"
                 width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -1669,6 +1710,60 @@ $$ LANGUAGE sql;`}</pre>
                 </button>
               )}
             </div>
+
+            {/* Visibility filter — closes when you click away */}
+            <div className="relative shrink-0" ref={filterRef}>
+              <button
+                type="button"
+                onClick={() => setFilterOpen((o) => !o)}
+                className="h-full px-4 py-2.5 bg-white border border-[#e8e0d8] text-sm text-[#2c2825] hover:bg-[#f5f0eb] transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                {POST_FILTERS.find((f) => f.key === postFilter)?.label}
+                <span className="text-xs text-[#8a8178]">
+                  {postFilter === "active"
+                    ? posts.filter((p) => !p.is_archived).length
+                    : postFilter === "archived"
+                      ? posts.filter((p) => p.is_archived).length
+                      : posts.length}
+                </span>
+                <svg
+                  width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  className={`transition-transform ${filterOpen ? "rotate-180" : ""}`}
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+
+              {filterOpen && (
+                <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-white border border-[#e8e0d8] shadow-lg">
+                  {POST_FILTERS.map((f) => {
+                    const count =
+                      f.key === "active"
+                        ? posts.filter((p) => !p.is_archived).length
+                        : f.key === "archived"
+                          ? posts.filter((p) => p.is_archived).length
+                          : posts.length;
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => { setPostFilter(f.key); setFilterOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                          postFilter === f.key ? "bg-[#f5f0eb] text-[#2c2825]" : "text-[#8a8178] hover:bg-[#faf9f7]"
+                        }`}
+                      >
+                        <span>
+                          {f.label}
+                          <span className="block text-[11px] text-[#b8b0a8]">{f.hint}</span>
+                        </span>
+                        <span className="text-xs text-[#b8b0a8] shrink-0 ml-2">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            </div>
           )}
 
           {posts.length === 0 && !showForm && (
@@ -1685,18 +1780,29 @@ $$ LANGUAGE sql;`}</pre>
 
           {(() => {
             const q = adminSearch.trim().toLowerCase();
+            const byVisibility = posts.filter((p) =>
+              postFilter === "active" ? !p.is_archived
+              : postFilter === "archived" ? !!p.is_archived
+              : true
+            );
             const filtered = q
-              ? posts.filter(
+              ? byVisibility.filter(
                   (p) =>
                     p.title.toLowerCase().includes(q) ||
                     (p.sku && p.sku.toLowerCase().includes(q))
                 )
-              : posts;
+              : byVisibility;
 
-            if (q && filtered.length === 0) {
+            if (filtered.length === 0) {
               return (
                 <div className="text-center py-10">
-                  <p className="text-[#8a8178]">Ничего не найдено по запросу «{adminSearch}»</p>
+                  <p className="text-[#8a8178]">
+                    {q
+                      ? `Ничего не найдено по запросу «${adminSearch}»`
+                      : postFilter === "archived"
+                        ? "Архивированных товаров нет"
+                        : "Активных товаров нет"}
+                  </p>
                 </div>
               );
             }
@@ -1704,7 +1810,11 @@ $$ LANGUAGE sql;`}</pre>
             return filtered.map((post) => (
             <div
               key={post.id}
-              className="bg-white border border-[#e8e0d8] p-4 flex items-center gap-4"
+              className={`border p-4 flex items-center gap-4 transition-colors ${
+                post.is_archived
+                  ? "bg-[#f2efea] border-[#ded6cd] opacity-60"
+                  : "bg-white border-[#e8e0d8]"
+              }`}
             >
               {/* Thumbnail */}
               <div className="w-16 h-16 bg-[#f5f0eb] shrink-0">
@@ -1735,6 +1845,11 @@ $$ LANGUAGE sql;`}</pre>
                   {post.is_discounted && (
                     <span className="text-[10px] bg-[#a8555c] text-white px-1.5 py-0.5 uppercase tracking-wider shrink-0">
                       Скидка
+                    </span>
+                  )}
+                  {post.is_archived && (
+                    <span className="text-[10px] bg-[#8a8178] text-white px-1.5 py-0.5 uppercase tracking-wider shrink-0">
+                      В архиве
                     </span>
                   )}
                   {post.stock_meters === 0 && (
@@ -1783,6 +1898,13 @@ $$ LANGUAGE sql;`}</pre>
                   className="px-3 py-1.5 text-sm text-[#2c2825] border border-[#e8e0d8] hover:bg-[#f5f0eb] transition-colors"
                 >
                   Изменить
+                </button>
+                <button
+                  onClick={() => toggleArchive(post)}
+                  title={post.is_archived ? "Вернуть на сайт" : "Скрыть с сайта, сохранив в админке"}
+                  className="px-3 py-1.5 text-sm text-[#2c2825] border border-[#e8e0d8] hover:bg-[#f5f0eb] transition-colors whitespace-nowrap"
+                >
+                  {post.is_archived ? "Вернуть" : "В архив"}
                 </button>
                 <button
                   onClick={() => deletePost(post.id)}

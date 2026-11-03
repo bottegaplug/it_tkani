@@ -13,6 +13,8 @@ export interface Post {
   categories: string[];
   is_new: boolean;
   is_discounted?: boolean;
+  /** Скрыт с сайта, но сохранён в админке */
+  is_archived?: boolean;
   price: string;
   /** Pre-discount price, shown struck through next to `price` */
   old_price?: string | null;
