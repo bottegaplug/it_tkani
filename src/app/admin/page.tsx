@@ -148,6 +148,13 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [sku, setSku] = useState("");
+  // Артикул уже занят? Ищем среди загруженных товаров, включая архив.
+  // Сам редактируемый товар дубликатом себя не считается.
+  const skuDuplicate = (() => {
+    const v = sku.trim().toUpperCase();
+    if (!v) return null;
+    return posts.find((p) => p.sku?.trim().toUpperCase() === v && p.id !== editing?.id) ?? null;
+  })();
   const [stockMeters, setStockMeters] = useState<string>("");
   // Отрезы как строки — поля ввода; пустые игнорируются при сохранении
   const [cuts, setCuts] = useState<string[]>([""]);
@@ -1537,13 +1544,30 @@ $$ LANGUAGE sql;`}</pre>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm text-[#2c2825] mb-1.5">Артикул (SKU)</label>
+                  <div className="flex items-baseline justify-between mb-1.5 gap-2">
+                    <label className="block text-sm text-[#2c2825]">Артикул (SKU)</label>
+                    {/* Предупреждение, а не запрет — создать всё равно можно */}
+                    {skuDuplicate && (
+                      <span className="text-xs text-red-600 font-medium truncate">
+                        Уже есть: {skuDuplicate.title}
+                      </span>
+                    )}
+                    {sku.trim() && !skuDuplicate && (
+                      <span className="text-xs text-emerald-700 font-medium">Свободен</span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={sku}
                     onChange={(e) => setSku(e.target.value)}
                     placeholder="SILK-001"
-                    className="w-full py-2.5 px-4 bg-[#f5f0eb] border border-[#e8e0d8] text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none focus:border-[#8a8178]"
+                    className={`w-full py-2.5 px-4 bg-[#f5f0eb] border text-sm text-[#2c2825] placeholder-[#8a8178] focus:outline-none transition-colors ${
+                      skuDuplicate
+                        ? "border-red-400 focus:border-red-500"
+                        : sku.trim()
+                          ? "border-emerald-500 focus:border-emerald-600"
+                          : "border-[#e8e0d8] focus:border-[#8a8178]"
+                    }`}
                   />
                 </div>
               </div>
