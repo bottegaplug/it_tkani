@@ -21,6 +21,7 @@ export const FABRIC_CATEGORIES = [
   "Деним",
   "Вискоза",
   "Полиэстер",
+  "Полиамид",
 ] as const;
 
 export type FabricCategory = (typeof FABRIC_CATEGORIES)[number];
@@ -46,4 +47,5 @@ export const CATEGORY_LABELS: Record<FabricCategory, { en: string; cs: string }>
   "Деним":      { en: "Denim",        cs: "Denim" },
   "Вискоза":    { en: "Viscose",      cs: "Viskóza" },
   "Полиэстер":  { en: "Polyester",    cs: "Polyester" },
+  "Полиамид":   { en: "Polyamide",    cs: "Polyamid" },
 };

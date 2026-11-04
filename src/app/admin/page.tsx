@@ -148,7 +148,7 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   /** Что именно грузится сейчас — чтобы зависшая отправка была видна */
-  const [uploadStatus, setUploadStatus] = useState<{ name: string; pct: number; done: number; total: number } | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<{ name: string; mb: string; pct: number; done: number; total: number } | null>(null);
   const uploadAbortRef = useRef<AbortController | null>(null);
   const [sku, setSku] = useState("");
   // Артикул уже занят? Ищем среди загруженных товаров, включая архив.
@@ -510,12 +510,13 @@ export default function AdminPage() {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setUploadStatus({ name: file.name, pct: 0, done: i, total: files.length });
+        const mb = (file.size / 1024 / 1024).toFixed(1);
+        setUploadStatus({ name: file.name, mb, pct: 0, done: i, total: files.length });
         try {
           const url = await uploadFile(file, {
             signal: controller.signal,
             onProgress: (f) =>
-              setUploadStatus({ name: file.name, pct: Math.round(f * 100), done: i, total: files.length }),
+              setUploadStatus({ name: file.name, mb, pct: Math.round(f * 100), done: i, total: files.length }),
           });
           newUrls.push(url);
         } catch (err: unknown) {
@@ -1690,7 +1691,7 @@ $$ LANGUAGE sql;`}</pre>
                           {uploadStatus.done + 1} из {uploadStatus.total} ·{" "}
                         </span>
                       )}
-                      {uploadStatus.name} — {uploadStatus.pct}%
+                      {uploadStatus.name} ({uploadStatus.mb} МБ) — {uploadStatus.pct}%
                     </span>
                     <button
                       type="button"

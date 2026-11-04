@@ -123,8 +123,10 @@ export async function uploadFile(file: File, opts: UploadOptions = {}): Promise<
 
   // If Supabase is configured, upload directly from browser
   if (supabaseUrl.startsWith("http") && supabaseAnonKey) {
-    // Пересобираем файл в Blob с верным типом — иначе Safari шлёт свой
-    const body = new Blob([await file.arrayBuffer()], { type: contentType });
+    // Подменяем тип через slice: он создаёт Blob поверх того же файла,
+    // не затягивая его целиком в память. Чтение в ArrayBuffer на видео
+    // в сотни мегабайт подвешивало вкладку ещё до начала отправки.
+    const body = file.slice(0, file.size, contentType);
 
     await putToStorage(
       `${supabaseUrl}/storage/v1/object/${bucket}/${encodeURIComponent(fileName)}`,
