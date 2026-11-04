@@ -1,5 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
@@ -20,6 +18,9 @@ const MIME_MAP: Record<string, string> = {
   heif: "image/jpeg",
 };
 
+/** Если за это время не пришло ни байта прогресса — считаем, что связь встала */
+const STALL_MS = 60_000;
+
 function getContentType(file: File): string {
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
   // Prefer our map over browser-reported type (more reliable on mobile)
@@ -34,8 +35,84 @@ function isVideoFile(file: File): boolean {
   return file.type.startsWith("video/") || videoExts.includes(ext);
 }
 
+export interface UploadOptions {
+  /** Доля выполнения от 0 до 1 — для полоски прогресса */
+  onProgress?: (fraction: number) => void;
+  /** Позволяет прервать зависшую загрузку кнопкой «Отмена» */
+  signal?: AbortSignal;
+}
+
+/**
+ * Шлёт файл напрямую в Supabase Storage.
+ * XMLHttpRequest вместо fetch — только он даёт события прогресса,
+ * без которых зависшая загрузка выглядит как «ничего не происходит».
+ */
+function putToStorage(
+  url: string,
+  body: Blob,
+  contentType: string,
+  opts: UploadOptions
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let stallTimer: ReturnType<typeof setTimeout>;
+
+    const stop = () => {
+      clearTimeout(stallTimer);
+      opts.signal?.removeEventListener("abort", onAbort);
+    };
+    const armStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        xhr.abort();
+        stop();
+        reject(new Error("связь оборвалась, загрузка не двигается"));
+      }, STALL_MS);
+    };
+    const onAbort = () => {
+      xhr.abort();
+      stop();
+      reject(new Error("загрузка отменена"));
+    };
+
+    opts.signal?.addEventListener("abort", onAbort);
+
+    xhr.upload.onprogress = (e) => {
+      armStallTimer();
+      if (e.lengthComputable) opts.onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      stop();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        opts.onProgress?.(1);
+        resolve();
+        return;
+      }
+      let message = `ошибка ${xhr.status}`;
+      try {
+        const body = JSON.parse(xhr.responseText);
+        if (body?.message) message = body.message;
+      } catch {
+        /* тело не JSON — оставляем код статуса */
+      }
+      if (xhr.status === 413) message = "файл слишком большой для хранилища";
+      reject(new Error(message));
+    };
+    xhr.onerror = () => { stop(); reject(new Error("нет связи с хранилищем")); };
+    xhr.ontimeout = () => { stop(); reject(new Error("истекло время ожидания")); };
+
+    xhr.open("POST", url);
+    xhr.setRequestHeader("apikey", supabaseAnonKey);
+    xhr.setRequestHeader("Authorization", `Bearer ${supabaseAnonKey}`);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.setRequestHeader("x-upsert", "false");
+    armStallTimer();
+    xhr.send(body);
+  });
+}
+
 /** Upload a file directly from the browser to Supabase Storage */
-export async function uploadFile(file: File): Promise<string> {
+export async function uploadFile(file: File, opts: UploadOptions = {}): Promise<string> {
   const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
   // Always save as .mp4 extension for MOV files (better browser playback)
   const saveExt = ext === "mov" ? "mp4" : ext;
@@ -46,38 +123,17 @@ export async function uploadFile(file: File): Promise<string> {
 
   // If Supabase is configured, upload directly from browser
   if (supabaseUrl.startsWith("http") && supabaseAnonKey) {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Пересобираем файл в Blob с верным типом — иначе Safari шлёт свой
+    const body = new Blob([await file.arrayBuffer()], { type: contentType });
 
-    // Mobile Safari needs ArrayBuffer; desktop works better with Blob
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(
-      typeof navigator !== "undefined" ? navigator.userAgent : ""
+    await putToStorage(
+      `${supabaseUrl}/storage/v1/object/${bucket}/${encodeURIComponent(fileName)}`,
+      body,
+      contentType,
+      opts
     );
 
-    let body: ArrayBuffer | Blob;
-    if (isMobile) {
-      body = await file.arrayBuffer();
-    } else {
-      // Re-wrap as Blob with correct content type (fixes desktop upload)
-      const buf = await file.arrayBuffer();
-      body = new Blob([buf], { type: contentType });
-    }
-
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, body, {
-        contentType,
-        upsert: false,
-      });
-
-    if (error) {
-      throw new Error(`Supabase: ${error.message}`);
-    }
-
-    const { data: urlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-
-    return urlData.publicUrl;
+    return `${supabaseUrl}/storage/v1/object/public/${bucket}/${fileName}`;
   }
 
   // Fallback: upload via API route (local mode, small files only)
@@ -87,6 +143,7 @@ export async function uploadFile(file: File): Promise<string> {
   const res = await fetch("/api/upload", {
     method: "POST",
     body: formData,
+    signal: opts.signal,
   });
 
   if (!res.ok) {
@@ -95,5 +152,6 @@ export async function uploadFile(file: File): Promise<string> {
   }
 
   const { url } = await res.json();
+  opts.onProgress?.(1);
   return url;
 }

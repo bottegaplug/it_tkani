@@ -147,6 +147,9 @@ export default function AdminPage() {
   const priceRub = parseRub(price);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  /** Что именно грузится сейчас — чтобы зависшая отправка была видна */
+  const [uploadStatus, setUploadStatus] = useState<{ name: string; pct: number; done: number; total: number } | null>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
   const [sku, setSku] = useState("");
   // Артикул уже занят? Ищем среди загруженных товаров, включая архив.
   // Сам редактируемый товар дубликатом себя не считается.
@@ -498,18 +501,35 @@ export default function AdminPage() {
   };
 
   const uploadFiles = async (files: FileList, type: "image" | "video") => {
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
     setUploading(true);
     setUploadError("");
     const newUrls: string[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      try {
-        const url = await uploadFile(files[i]);
-        newUrls.push(url);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Неизвестная ошибка";
-        setUploadError(`Ошибка загрузки ${files[i].name}: ${msg}`);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadStatus({ name: file.name, pct: 0, done: i, total: files.length });
+        try {
+          const url = await uploadFile(file, {
+            signal: controller.signal,
+            onProgress: (f) =>
+              setUploadStatus({ name: file.name, pct: Math.round(f * 100), done: i, total: files.length }),
+          });
+          newUrls.push(url);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Неизвестная ошибка";
+          const size = (file.size / 1024 / 1024).toFixed(1);
+          setUploadError(`Не загрузилось «${file.name}» (${size} МБ): ${msg}`);
+          if (controller.signal.aborted) break;
+        }
       }
+    } finally {
+      // Что бы ни случилось, кнопки должны разблокироваться
+      uploadAbortRef.current = null;
+      setUploadStatus(null);
+      setUploading(false);
     }
 
     if (type === "image") {
@@ -517,7 +537,6 @@ export default function AdminPage() {
     } else {
       setVideos((prev) => [...prev, ...newUrls]);
     }
-    setUploading(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1659,6 +1678,34 @@ $$ LANGUAGE sql;`}</pre>
               {uploadError && (
                 <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm">
                   {uploadError}
+                </div>
+              )}
+
+              {uploadStatus && (
+                <div className="p-3 border border-[#e8e0d8] bg-[#faf9f7]">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="text-sm text-[#2c2825] truncate">
+                      {uploadStatus.total > 1 && (
+                        <span className="text-[#8a8178]">
+                          {uploadStatus.done + 1} из {uploadStatus.total} ·{" "}
+                        </span>
+                      )}
+                      {uploadStatus.name} — {uploadStatus.pct}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => uploadAbortRef.current?.abort()}
+                      className="shrink-0 text-sm text-[#a8555c] hover:underline"
+                    >
+                      Отменить
+                    </button>
+                  </div>
+                  <div className="h-1 bg-[#e8e0d8]">
+                    <div
+                      className="h-full bg-[#2c2825] transition-[width] duration-200"
+                      style={{ width: `${uploadStatus.pct}%` }}
+                    />
+                  </div>
                 </div>
               )}
 
